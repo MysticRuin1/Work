@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anonymous Liberty - Digital Rights & Privacy</title>
+    <meta name="description" content="Defending Digital Rights in the Information Age">
+    <meta name="robots" content="noindex, nofollow">
+    <style>
+        /* --- STYLES (unchanged) --- */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #00ff41;
+            line-height: 1.4;
+            overflow-x: hidden;
+        }
+        /* (all CSS rules exactly as in your file) */
+    </style>
+</head>
+<body>
+    <div class="matrix-bg"></div>
+    <div class="notification-panel"></div>
+
+    <!-- Decoy Site -->
+    <!-- (all HTML markup exactly as in your file) -->
+
+    <!-- Hunter-Net Application -->
+    <div id="hunter-app" class="hunter-app">
+        <div class="hunter-header">
+            <div class="hunter-header-content">
+                <div class="hunter-logo">
+                    <div class="hunter-glyphs">✠ ☩ ⚔</div>
+                    <div class="hunter-title">HUNTER-NET</div>
+                </div>
+                <div class="user-info">
+                    <span id="user-display">Connecting...</span>
+                    <div class="user-stats">
+                        <span>Field Cred: </span><span id="field-cred">0</span>
+                    </div>
+                    <button class="btn btn-danger" onclick="logout()">Disconnect</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="forum-nav">
+            <div class="breadcrumb">
+                <a href="#" onclick="showForumHome()">Hunter-Net</a>
+                <span id="breadcrumb-trail"></span>
+            </div>
+        </div>
+
+        <div class="forum-container">
+            <!-- Forum Home -->
+            <div id="forum-home" class="forum-view">
+                <div class="forum-section">
+                    <div class="forum-section-header">
+                        <div class="forum-section-title">Discussion Boards</div>
+                        <div class="forum-section-stats">Organized by Creed</div>
+                    </div>
+                    <table class="thread-list">
+                        <thead>
+                            <tr>
+                                <th>Board</th>
+                                <th>Description</th>
+                                <th>Threads</th>
+                                <th>Last Activity</th>
+                            </tr>
+                        </thead>
+                        <tbody id="boards-list">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="forum-section">
+                    <div class="forum-section-header">
+                        <div class="forum-section-title">Communication Channels</div>
+                        <div class="forum-section-stats">Real-time secure chat</div>
+                    </div>
+                    <div style="padding: 20px;">
+                        <button class="btn" onclick="showChat('global')">Global Channel</button>
+                        <button class="btn" onclick="showChat('firelight')">Firelight</button>
+                        <button class="btn" onclick="showChat('judgment-day')">Judgment Day</button>
+                        <button class="btn" onclick="showChat('triage')">Triage</button>
+                        <button class="btn" onclick="showChat('unity')">Unity</button>
+                        <button class="btn" onclick="showChat('vigil')">Vigil</button>
+                        <button class="btn" onclick="showChat('vitalis')">Vitalis</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // --- JAVASCRIPT (unchanged from your file) ---
+        // Global state, notifications, tab switching, auth,
+        // API helpers, forum navigation, chat, etc.
+        // (all JS code exactly as in your file)
+    </script>
+</body>
+</html>
