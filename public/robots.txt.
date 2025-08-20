@@ -1,0 +1,4 @@
+User-agent: *
+Disallow: /
+
+# This is a private forum - no search engine indexing
