@@ -1,0 +1,24 @@
+databases:
+  - name: hunternet-db
+    plan: free
+    databaseName: hunternet
+    user: hunter
+
+services:
+  - type: web
+    name: hunternet-app
+    env: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: node server.js
+    autoDeploy: true
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: hunternet-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
