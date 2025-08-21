@@ -7,8 +7,12 @@
     <meta name="description" content="Defending Digital Rights in the Information Age">
     <meta name="robots" content="noindex, nofollow">
     <style>
-        /* --- STYLES (unchanged) --- */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             font-family: 'Courier New', monospace;
             background: #0a0a0a;
@@ -16,131 +20,293 @@
             line-height: 1.4;
             overflow-x: hidden;
         }
-        h1, h2, h3, h4, h5 {
-            color: #00ff41;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-        a { color: #00ff41; text-decoration: none; }
-        a:hover { text-decoration: underline; }
+
+        /* Matrix background animation */
         .matrix-bg {
             position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: black;
-            overflow: hidden;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
             z-index: -1;
+            background: radial-gradient(ellipse at center, #001100 0%, #000000 70%);
         }
+
+        /* Notification system */
         .notification-panel {
             position: fixed;
-            top: 10px; right: 10px;
-            background: rgba(0,0,0,0.9);
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .notification {
+            background: #1a1a1a;
             border: 1px solid #00ff41;
-            padding: 10px;
-            font-size: 0.9em;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
             color: #00ff41;
-            max-width: 250px;
+            cursor: pointer;
+            max-width: 300px;
+            animation: slideIn 0.3s ease;
+        }
+
+        .notification.error {
+            border-color: #ff4444;
+            color: #ff4444;
+        }
+
+        .notification.success {
+            border-color: #44ff44;
+            color: #44ff44;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Decoy site styles */
+        .decoy-header {
+            background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+            padding: 20px;
+            border-bottom: 2px solid #00ff41;
+            text-align: center;
+        }
+
+        .decoy-logo {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px #00ff41;
+        }
+
+        .decoy-tagline {
+            color: #888;
+            font-size: 1.1em;
+        }
+
+        .decoy-nav {
+            background: #1a1a1a;
+            padding: 15px;
+            text-align: center;
+            border-bottom: 1px solid #333;
+        }
+
+        .nav-links {
+            display: inline-flex;
+            gap: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .nav-links a {
+            color: #00ff41;
+            text-decoration: none;
+            padding: 8px 15px;
+            border: 1px solid transparent;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .nav-links a:hover, .nav-links a.active {
+            border-color: #00ff41;
+            box-shadow: 0 0 5px #00ff41;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .decoy-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .article {
+            background: #1a1a1a;
+            padding: 25px;
+            border-radius: 5px;
+            border: 1px solid #333;
+            margin-bottom: 20px;
+        }
+
+        .sidebar {
+            background: #1a1a1a;
+            padding: 25px;
+            border-radius: 5px;
+            border: 1px solid #333;
+            height: fit-content;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #00ff41;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            color: #00ff41;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .btn {
+            background: #003300;
+            color: #00ff41;
+            border: 1px solid #00ff41;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 3px;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+            font-family: 'Courier New', monospace;
+            margin-right: 10px;
+        }
+
+        .btn:hover {
+            background: #00ff41;
+            color: #000;
+            box-shadow: 0 0 10px #00ff41;
+        }
+
+        .btn-danger {
+            background: #660000;
+            border-color: #ff0000;
+            color: #ff0000;
+        }
+
+        .btn-danger:hover {
+            background: #ff0000;
+            color: #fff;
+        }
+
+        .btn-secondary {
+            background: #333;
+            border-color: #666;
+            color: #ccc;
+        }
+
+        .btn-secondary:hover {
+            background: #666;
+            color: #fff;
+        }
+
+        /* Tab system for login/register */
+        .auth-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #333;
+        }
+
+        .auth-tab {
+            background: none;
+            border: none;
+            color: #666;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .auth-tab.active {
+            color: #00ff41;
+            border-bottom-color: #00ff41;
+        }
+
+        .auth-tab:hover {
+            color: #00ff41;
+        }
+
+        .auth-form {
             display: none;
         }
+
+        .auth-form.active {
+            display: block;
+        }
+
+        /* Hunter-Net Forum Styles */
         .hunter-app {
-            display: flex;
-            flex-direction: column;
+            display: none;
             min-height: 100vh;
+            background: #0a0a0a;
         }
+
         .hunter-header {
-            background: #111;
-            border-bottom: 2px solid #00ff41;
-            padding: 10px 20px;
+            background: linear-gradient(135deg, #1a0000, #330000);
+            border-bottom: 2px solid #ff4444;
+            padding: 15px 0;
         }
+
         .hunter-header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
             display: flex;
-            align-items: center;
             justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
         }
+
         .hunter-logo {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 15px;
         }
-        .hunter-logo .hunter-glyphs {
+
+        .hunter-glyphs {
             font-size: 1.5em;
+            color: #ff4444;
         }
+
         .hunter-title {
-            font-size: 1.2em;
+            color: #ff4444;
+            font-size: 1.8em;
             font-weight: bold;
         }
+
         .user-info {
-            text-align: right;
-        }
-        .user-stats {
-            font-size: 0.9em;
-            color: #0f0;
-        }
-        .forum-nav {
-            padding: 10px 20px;
-            background: #0f0f0f;
-            border-bottom: 1px solid #00ff41;
-        }
-        .breadcrumb {
-            font-size: 0.9em;
-        }
-        .forum-container {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
-        }
-        .forum-section {
-            margin-bottom: 30px;
-            border: 1px solid #00ff41;
-            border-radius: 5px;
-            overflow: hidden;
-        }
-        .forum-section-header {
-            background: #111;
-            padding: 10px 15px;
-            border-bottom: 1px solid #00ff41;
             display: flex;
-            justify-content: space-between;
             align-items: center;
-        }
-        .forum-section-title {
-            font-size: 1.1em;
-        }
-        .forum-section-stats {
-            font-size: 0.85em;
-            color: #0f0;
-        }
-        .thread-list {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .thread-list th, .thread-list td {
-            padding: 8px 12px;
-            border-bottom: 1px solid #333;
-        }
-        .thread-list tr:hover {
-            background: #111;
-        }
-        .btn {
-            display: inline-block;
-            padding: 6px 12px;
-            margin: 2px;
-            background: #0a0;
-            color: #fff;
-            border: none;
-            border-radius: 4px;
+            gap: 15px;
+            color: #ff4444;
+            flex-wrap: wrap;
             font-size: 0.9em;
-            cursor: pointer;
         }
-        .btn:hover {
-            background: #0f0;
-            color: #000;
+
+        .user-stats {
+            background: #330000;
+            padding: 5px 10px;
+            border-radius: 3px;
+            border: 1px solid #ff4444;
         }
-        .btn-danger {
-            background: #a00;
+
+        .hidden {
+            display: none !important;
         }
-        .btn-danger:hover {
-            background: #f00;
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .decoy-content {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -148,16 +314,167 @@
     <div class="matrix-bg"></div>
     <div class="notification-panel"></div>
 
-    <!-- Hunter-Net Application -->
+    <!-- Decoy Site -->
+    <div id="decoy-site" class="decoy-site">
+        <div class="decoy-header">
+            <div class="decoy-logo">ANONYMOUS LIBERTY</div>
+            <div class="decoy-tagline">Defending Digital Rights in the Information Age</div>
+        </div>
+
+        <div class="decoy-nav">
+            <div class="nav-links">
+                <a href="#" onclick="showTab('home')" class="nav-link active">Home</a>
+                <a href="#" onclick="showTab('articles')" class="nav-link">Articles</a>
+                <a href="#" onclick="showTab('resources')" class="nav-link">Resources</a>
+                <a href="#" onclick="showTab('contact')" class="nav-link">Contact</a>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="decoy-content">
+                <div id="main-content">
+                    <div id="home-tab" class="content-tab">
+                        <div class="article">
+                            <h2>Welcome to Anonymous Liberty</h2>
+                            <p>In an age where digital privacy is under constant threat, Anonymous Liberty stands as a beacon for those who refuse to surrender their fundamental rights to privacy and freedom.</p>
+                            
+                            <p>We believe that anonymity is not about hiding wrongdoing, but about preserving the space for dissent, creativity, and authentic human connection in an increasingly surveilled world.</p>
+
+                            <h3>Our Mission</h3>
+                            <p>To educate, advocate, and provide tools for individuals seeking to protect their digital privacy and maintain their anonymity online. We work to ensure that the right to privacy remains a cornerstone of free society.</p>
+
+                            <h3>Recent Updates</h3>
+                            <ul>
+                                <li>New guide on secure communication protocols</li>
+                                <li>Analysis of recent privacy legislation changes</li>
+                                <li>Updated recommendations for anonymous browsing</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div id="articles-tab" class="content-tab hidden">
+                        <div class="article">
+                            <h2>Latest Articles</h2>
+                            
+                            <h3>The Surveillance State: A Digital Panopticon</h3>
+                            <p>Exploring how modern surveillance systems create a society where privacy becomes a luxury only the tech-savvy can afford...</p>
+
+                            <h3>Cryptography for Activists</h3>
+                            <p>A comprehensive guide to using encryption tools to protect sensitive communications in high-risk environments...</p>
+
+                            <h3>The Right to be Forgotten</h3>
+                            <p>Examining the legal and technical challenges of maintaining digital anonymity in an era of permanent records...</p>
+                        </div>
+                    </div>
+
+                    <div id="resources-tab" class="content-tab hidden">
+                        <div class="article">
+                            <h2>Privacy Resources</h2>
+                            
+                            <h3>Recommended Tools</h3>
+                            <ul>
+                                <li>Secure messaging applications</li>
+                                <li>Anonymous browsing solutions</li>
+                                <li>Privacy-focused operating systems</li>
+                                <li>Encryption software reviews</li>
+                            </ul>
+
+                            <h3>Educational Materials</h3>
+                            <ul>
+                                <li>Digital security best practices</li>
+                                <li>Understanding metadata</li>
+                                <li>Legal rights and privacy laws</li>
+                                <li>Threat modeling for individuals</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div id="contact-tab" class="content-tab hidden">
+                        <div class="article">
+                            <h2>Secure Contact</h2>
+                            <p>We understand the importance of secure communications. Use these methods to contact us anonymously:</p>
+
+                            <h3>Anonymous Channels</h3>
+                            <p>For sensitive communications, please use our secure channels. All communications are encrypted and we do not log IP addresses or other identifying information.</p>
+
+                            <p>Remember: Never use your real name or identifying information when contacting us about sensitive matters.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sidebar">
+                    <h3>Access Portal</h3>
+                    <p style="color: #888; margin-bottom: 20px;">Authorized personnel only. Multiple security layers active.</p>
+
+                    <div class="auth-tabs">
+                        <button class="auth-tab active" onclick="showAuth('login')">Access</button>
+                        <button class="auth-tab" onclick="showAuth('register')">Register</button>
+                    </div>
+
+                    <div id="login-form" class="auth-form active">
+                        <form onsubmit="handleLogin(event)">
+                            <div class="form-group">
+                                <label for="handle_number">Handle:</label>
+                                <input type="text" id="handle_number" name="handle_number" placeholder="handle123" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="login_password">Passphrase:</label>
+                                <input type="password" id="login_password" name="password" required>
+                            </div>
+                            <button type="submit" class="btn">AUTHENTICATE</button>
+                        </form>
+                    </div>
+
+                    <div id="register-form" class="auth-form">
+                        <form onsubmit="handleRegister(event)">
+                            <div class="form-group">
+                                <label for="handle">Handle:</label>
+                                <input type="text" id="handle" name="handle" required maxlength="20">
+                                <small style="color: #888;">Numbers will be auto-assigned</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="email">Contact (optional):</label>
+                                <input type="email" id="email" name="email">
+                            </div>
+                            <div class="form-group">
+                                <label for="creed">Affiliation:</label>
+                                <select id="creed" name="creed">
+                                    <option value="">Select...</option>
+                                    <option value="firelight">Firelight</option>
+                                    <option value="judgment-day">Judgment Day</option>
+                                    <option value="triage">Triage</option>
+                                    <option value="unity">Unity</option>
+                                    <option value="vigil">Vigil</option>
+                                    <option value="vitalis">Vitalis</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="register_password">Passphrase:</label>
+                                <input type="password" id="register_password" name="password" required minlength="8">
+                            </div>
+                            <button type="submit" class="btn">CREATE ACCOUNT</button>
+                        </form>
+                    </div>
+
+                    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #333;">
+                        <h3>Security Notice</h3>
+                        <p style="color: #888; font-size: 0.9em;">This portal uses military-grade encryption. All access attempts are logged and monitored.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hunter-Net Application (Hidden for now) -->
     <div id="hunter-app" class="hunter-app">
         <div class="hunter-header">
             <div class="hunter-header-content">
                 <div class="hunter-logo">
-                    <div class="hunter-glyphs">✠ ☩ ⚔</div>
+                    <div class="hunter-glyphs">✟ ☩ ⚔</div>
                     <div class="hunter-title">HUNTER-NET</div>
                 </div>
                 <div class="user-info">
-                    <span id="user-display">Connecting...</span>
+                    <span id="user-display">Connected</span>
                     <div class="user-stats">
                         <span>Field Cred: </span><span id="field-cred">0</span>
                     </div>
@@ -165,73 +482,194 @@
                 </div>
             </div>
         </div>
-
-        <div class="forum-nav">
-            <div class="breadcrumb">
-                <a href="#" onclick="showForumHome()">Hunter-Net</a>
-                <span id="breadcrumb-trail"></span>
-            </div>
-        </div>
-
-        <div class="forum-container">
-            <!-- Forum Home -->
-            <div id="forum-home" class="forum-view">
-                <div class="forum-section">
-                    <div class="forum-section-header">
-                        <div class="forum-section-title">Discussion Boards</div>
-                        <div class="forum-section-stats">Organized by Creed</div>
-                    </div>
-                    <table class="thread-list">
-                        <thead>
-                            <tr>
-                                <th>Board</th>
-                                <th>Description</th>
-                                <th>Threads</th>
-                                <th>Last Activity</th>
-                            </tr>
-                        </thead>
-                        <tbody id="boards-list">
-                            <!-- Populated by JS -->
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="forum-section">
-                    <div class="forum-section-header">
-                        <div class="forum-section-title">Communication Channels</div>
-                        <div class="forum-section-stats">Real-time secure chat</div>
-                    </div>
-                    <div style="padding: 20px;">
-                        <button class="btn" onclick="showChat('global')">Global Channel</button>
-                        <button class="btn" onclick="showChat('firelight')">Firelight</button>
-                        <button class="btn" onclick="showChat('judgment-day')">Judgment Day</button>
-                        <button class="btn" onclick="showChat('triage')">Triage</button>
-                        <button class="btn" onclick="showChat('unity')">Unity</button>
-                        <button class="btn" onclick="showChat('vigil')">Vigil</button>
-                        <button class="btn" onclick="showChat('vitalis')">Vitalis</button>
-                    </div>
-                </div>
+        <div class="container">
+            <div class="article">
+                <h2>Hunter-Net Access Granted</h2>
+                <p>Welcome to the secure network. This would connect to the full forum system with a proper backend.</p>
+                <button class="btn btn-secondary" onclick="logout()">Return to Anonymous Liberty</button>
             </div>
         </div>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
     <script>
-        // --- JS CODE FROM FILE ---
-        const socket = io();
+        // Global state
+        let currentUser = null;
+
+        // Debug logging
+        console.log('Hunter-Net initializing...');
+
+        // Notification system
+        function showNotification(message, type = 'info') {
+            console.log('Notification:', message, type);
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            notification.onclick = () => notification.remove();
+            
+            document.querySelector('.notification-panel').appendChild(notification);
+            
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 5000);
+        }
+
+        // Tab switching for decoy site
+        function showTab(tabName) {
+            console.log('Switching to tab:', tabName);
+            document.querySelectorAll('.content-tab').forEach(tab => tab.classList.add('hidden'));
+            document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+            
+            const targetTab = document.getElementById(`${tabName}-tab`);
+            if (targetTab) {
+                targetTab.classList.remove('hidden');
+            }
+            
+            // Find the clicked link and make it active
+            const clickedLink = event.target;
+            if (clickedLink) {
+                clickedLink.classList.add('active');
+            }
+        }
+
+        // Auth tab switching
+        function showAuth(authType) {
+            console.log('Switching auth to:', authType);
+            document.querySelectorAll('.auth-form').forEach(form => form.classList.remove('active'));
+            document.querySelectorAll('.auth-tab').forEach(tab => tab.classList.remove('active'));
+            
+            const targetForm = document.getElementById(`${authType}-form`);
+            if (targetForm) {
+                targetForm.classList.add('active');
+            }
+            
+            event.target.classList.add('active');
+        }
+
+        // Mock API for demonstration
+        async function mockApiRequest(endpoint, options = {}) {
+            console.log('Mock API call:', endpoint, options);
+            
+            // Simulate network delay
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            if (endpoint === '/api/login') {
+                const body = JSON.parse(options.body);
+                if (body.handle_number === 'Witness1' && body.password === 'password123') {
+                    return {
+                        user: {
+                            handle_number: 'Witness1',
+                            field_cred: 100,
+                            is_admin: true
+                        }
+                    };
+                } else {
+                    throw new Error('Invalid credentials');
+                }
+            }
+            
+            if (endpoint === '/api/register') {
+                const body = JSON.parse(options.body);
+                return {
+                    user: {
+                        handle_number: body.handle + Math.floor(Math.random() * 1000),
+                        field_cred: 0,
+                        is_admin: false
+                    }
+                };
+            }
+            
+            throw new Error('API endpoint not implemented');
+        }
+
+        // Authentication handlers
+        async function handleLogin(event) {
+            event.preventDefault();
+            console.log('Login attempt...');
+            
+            const formData = new FormData(event.target);
+            
+            try {
+                showNotification('Authenticating...', 'info');
+                
+                const data = await mockApiRequest('/api/login', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        handle_number: formData.get('handle_number'),
+                        password: formData.get('password')
+                    })
+                });
+                
+                currentUser = data.user;
+                initializeHunterNet();
+                showNotification('Access granted. Welcome to Hunter-Net.', 'success');
+                
+            } catch (error) {
+                console.error('Login error:', error);
+                showNotification('Authentication failed. Check your credentials.', 'error');
+            }
+        }
+
+        async function handleRegister(event) {
+            event.preventDefault();
+            console.log('Registration attempt...');
+            
+            const formData = new FormData(event.target);
+            
+            try {
+                showNotification('Creating account...', 'info');
+                
+                const data = await mockApiRequest('/api/register', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        handle: formData.get('handle'),
+                        email: formData.get('email') || undefined,
+                        password: formData.get('password'),
+                        creed: formData.get('creed') || undefined
+                    })
+                });
+                
+                currentUser = data.user;
+                initializeHunterNet();
+                showNotification(`Account created. Welcome ${data.user.handle_number}`, 'success');
+                
+            } catch (error) {
+                console.error('Registration error:', error);
+                showNotification('Registration failed. Try a different handle.', 'error');
+            }
+        }
 
         function logout() {
-            alert("Disconnected from Hunter-Net.");
+            console.log('Logging out...');
+            currentUser = null;
+            document.getElementById('decoy-site').style.display = 'block';
+            document.getElementById('hunter-app').style.display = 'none';
+            showNotification('Disconnected from Hunter-Net.', 'info');
         }
 
-        function showForumHome() {
-            document.getElementById("breadcrumb-trail").innerText = "";
-            document.getElementById("forum-home").style.display = "block";
+        // Hunter-Net initialization
+        function initializeHunterNet() {
+            console.log('Initializing Hunter-Net interface...');
+            document.getElementById('decoy-site').style.display = 'none';
+            document.getElementById('hunter-app').style.display = 'block';
+            
+            document.getElementById('user-display').textContent = currentUser.handle_number;
+            document.getElementById('field-cred').textContent = currentUser.field_cred || 0;
         }
 
-        function showChat(channel) {
-            alert("Opening chat channel: " + channel);
-        }
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Page loaded successfully');
+            showNotification('Anonymous Liberty portal online', 'success');
+            
+            // Test admin login hint
+            setTimeout(() => {
+                showNotification('Demo: Try logging in with "Witness1" / "password123"', 'info');
+            }, 2000);
+        });
+
+        console.log('All scripts loaded successfully');
     </script>
 </body>
 </html>
