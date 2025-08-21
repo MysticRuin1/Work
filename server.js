@@ -27,7 +27,7 @@ function CHECK_ENV() {
 }
 CHECK_ENV();
 
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT; // must use Render-provided port
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -69,7 +69,7 @@ async function query(q, params) {
   }
 }
 
-// --- Migration helper (unchanged) ---
+// --- Migration helper ---
 async function ensureMigrations() {
   await query(`
     CREATE TABLE IF NOT EXISTS schema_migrations(
@@ -84,11 +84,60 @@ async function ensureMigrations() {
   const steps = [
     {
       name: '001_init',
-      sql: ` ... same as before ... `
+      sql: `
+        CREATE TABLE IF NOT EXISTS users (
+          id SERIAL PRIMARY KEY,
+          handle_number TEXT UNIQUE NOT NULL,
+          password_hash TEXT NOT NULL,
+          created_at TIMESTAMPTZ DEFAULT now()
+        );
+
+        CREATE TABLE IF NOT EXISTS chat_rooms (
+          id SERIAL PRIMARY KEY,
+          key TEXT UNIQUE NOT NULL,
+          created_at TIMESTAMPTZ DEFAULT now()
+        );
+
+        CREATE TABLE IF NOT EXISTS messages (
+          id SERIAL PRIMARY KEY,
+          room_id INT REFERENCES chat_rooms(id) ON DELETE CASCADE,
+          author_id INT REFERENCES users(id) ON DELETE CASCADE,
+          body TEXT NOT NULL,
+          created_at TIMESTAMPTZ DEFAULT now()
+        );
+
+        CREATE TABLE IF NOT EXISTS boards (
+          id SERIAL PRIMARY KEY,
+          name TEXT UNIQUE NOT NULL,
+          description TEXT,
+          created_at TIMESTAMPTZ DEFAULT now()
+        );
+
+        CREATE TABLE IF NOT EXISTS threads (
+          id SERIAL PRIMARY KEY,
+          board_id INT REFERENCES boards(id) ON DELETE CASCADE,
+          author_id INT REFERENCES users(id) ON DELETE CASCADE,
+          title TEXT NOT NULL,
+          body TEXT,
+          created_at TIMESTAMPTZ DEFAULT now()
+        );
+      `
     },
     {
       name: '002_seed_boards_rooms',
-      sql: ` ... same as before ... `
+      sql: `
+        INSERT INTO chat_rooms (key) VALUES ('global')
+        ON CONFLICT (key) DO NOTHING;
+
+        INSERT INTO boards (name, description) VALUES
+          ('Firelight', 'Discussion about cryptids and monsters'),
+          ('Judgment Day', 'Hunter tactics and survival'),
+          ('Triage', 'Medical and psychological support'),
+          ('Unity', 'Organizing hunters together'),
+          ('Vigil', 'Field reports and sightings'),
+          ('Vitalis', 'Research and lore')
+        ON CONFLICT (name) DO NOTHING;
+      `
     }
   ];
 
@@ -102,7 +151,7 @@ async function ensureMigrations() {
 }
 
 // --- Auth + Boards + Threads routes (unchanged) ---
-// (keep your full API endpoints here from original file)
+// keep your API endpoints here
 
 // --- Chat via Socket.IO ---
 function parseCookie(header) {
@@ -170,4 +219,5 @@ ensureMigrations().then(() => {
   console.error('Migration error:', err);
   process.exit(1);
 });
+
 
