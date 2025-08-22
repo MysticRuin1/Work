@@ -8,7 +8,6 @@ const bcrypt = require('bcrypt');
 const { Pool } = require('pg');
 const http = require('http');
 const path = require('path');
-
 const app = express();
 app.set('trust proxy', 1);
 const server = http.createServer(app);
@@ -30,6 +29,7 @@ CHECK_ENV();
 
 const PORT = process.env.PORT || 10000;
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_URL && process.env.DATABASE_URL.includes('render.com')
@@ -74,7 +74,6 @@ async function query(q, params) {
 async function ensureMigrations() {
   try {
     console.log('Starting migrations...');
-    
     // Create migrations table
     await query(`
       CREATE TABLE IF NOT EXISTS schema_migrations(
@@ -83,11 +82,12 @@ async function ensureMigrations() {
         run_at timestamptz DEFAULT now()
       );
     `);
-    
+
     const { rows } = await query(`SELECT name FROM schema_migrations`);
     const ran = new Set(rows.map(r => r.name));
-    console.log('Previously run migrations:', Array.from(ran));
 
+    console.log('Previously run migrations:', Array.from(ran));
+    
     const steps = [
       {
         name: '001_init',
@@ -128,7 +128,7 @@ async function ensureMigrations() {
 
           CREATE TABLE IF NOT EXISTS boards (
             id SERIAL PRIMARY KEY,
-            name TEXT UNIQUE NOT NULL,
+            name TEXT,
             description TEXT,
             key TEXT UNIQUE NOT NULL,
             created_at TIMESTAMPTZ DEFAULT now()
@@ -177,7 +177,7 @@ async function ensureMigrations() {
             ('Unity', 'Organizing hunters together', 'unity'),
             ('Vigil', 'Field reports and sightings', 'vigil'),
             ('Vitalis', 'Research and lore', 'vitalis')
-          ON CONFLICT (name) DO NOTHING;
+          ON CONFLICT (key) DO NOTHING;
         `
       },
       {
@@ -188,21 +188,39 @@ async function ensureMigrations() {
           ALTER TABLE users ADD COLUMN IF NOT EXISTS number INT;
           ALTER TABLE users ADD COLUMN IF NOT EXISTS member TEXT DEFAULT 'member';
           ALTER TABLE users ADD COLUMN IF NOT EXISTS active TEXT DEFAULT 'active';
+          ALTER TABLE boards ADD COLUMN IF NOT EXISTS name TEXT;
+          ALTER TABLE threads ADD COLUMN IF NOT EXISTS signal_type TEXT;
           
           -- Update existing users to have proper values if they're missing
-          UPDATE users SET 
-            handle = CASE 
+          UPDATE users SET
+            handle = CASE
               WHEN handle IS NULL THEN split_part(handle_number, regexp_replace(handle_number, '[^0-9].*$', '', 'g'), 1)
-              ELSE handle 
+              ELSE handle
             END,
-            number = CASE 
+            number = CASE
               WHEN number IS NULL THEN COALESCE(CAST(regexp_replace(handle_number, '^[^0-9]*', '', 'g') AS INT), 1)
-              ELSE number 
+              ELSE number
             END,
             member = COALESCE(member, 'member'),
             active = COALESCE(active, 'active')
           WHERE handle IS NULL OR number IS NULL OR member IS NULL OR active IS NULL;
-          
+
+          -- Update boards to have names if they're missing
+          UPDATE boards SET name = CASE 
+            WHEN name IS NULL THEN 
+              CASE key
+                WHEN 'firelight' THEN 'Firelight'
+                WHEN 'judgment-day' THEN 'Judgment Day'
+                WHEN 'triage' THEN 'Triage'
+                WHEN 'unity' THEN 'Unity'
+                WHEN 'vigil' THEN 'Vigil'
+                WHEN 'vitalis' THEN 'Vitalis'
+                ELSE initcap(replace(key, '-', ' '))
+              END
+            ELSE name
+          END
+          WHERE name IS NULL;
+
           -- Ensure sequence exists
           CREATE SEQUENCE IF NOT EXISTS user_number_seq START 1;
           
@@ -227,7 +245,7 @@ async function ensureMigrations() {
         console.log(`Completed migration: ${step.name}`);
       }
     }
-    
+
     console.log('Migrations completed successfully');
   } catch (error) {
     console.error('Migration error:', error);
@@ -245,7 +263,7 @@ app.post('/api/register', async (req, res) => {
     if (!handle || !password) {
       return res.status(400).json({ error: 'Handle and password required' });
     }
-
+    
     if (password.length < 8) {
       return res.status(400).json({ error: 'Password must be at least 8 characters' });
     }
@@ -258,20 +276,21 @@ app.post('/api/register', async (req, res) => {
     const password_hash = await bcrypt.hash(password, 12);
 
     // Create user with correct schema
-    const { rows: [user] } = await query(
-      'INSERT INTO users (handle, number, handle_number, password_hash, email, creed, member, active) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, handle_number, field_cred, is_admin',
-      [handle, nextval, handle_number, password_hash, email || null, creed || null, 'member', 'active']
-    );
+    const { rows: [user] } = await query(`
+      INSERT INTO users (handle, number, handle_number, password_hash, email, creed, member, active) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+      RETURNING id, handle_number, field_cred, is_admin
+    `, [handle, nextval, handle_number, password_hash, email || null, creed || null, 'member', 'active']);
 
     // Sign JWT
-    const token = signToken({ 
-      id: user.id, 
+    const token = signToken({
+      id: user.id,
       handle_number: user.handle_number,
-      is_admin: user.is_admin 
+      is_admin: user.is_admin
     });
 
-    res.cookie('token', token, { 
-      httpOnly: true, 
+    res.cookie('token', token, {
+      httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
@@ -283,6 +302,7 @@ app.post('/api/register', async (req, res) => {
         is_admin: user.is_admin
       }
     });
+
   } catch (error) {
     console.error('Registration error:', error);
     if (error.code === '23505') { // Unique violation
@@ -319,14 +339,14 @@ app.post('/api/login', async (req, res) => {
     }
 
     // Sign JWT
-    const token = signToken({ 
-      id: user.id, 
+    const token = signToken({
+      id: user.id,
       handle_number: user.handle_number,
-      is_admin: user.is_admin 
+      is_admin: user.is_admin
     });
 
-    res.cookie('token', token, { 
-      httpOnly: true, 
+    res.cookie('token', token, {
+      httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
@@ -338,6 +358,7 @@ app.post('/api/login', async (req, res) => {
         is_admin: user.is_admin
       }
     });
+
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Login failed' });
@@ -378,7 +399,6 @@ app.get('/api/boards', async (req, res) => {
     res.json({ boards });
   } catch (error) {
     console.error('Get boards error:', error);
-    
     // If the name column doesn't exist, try a fallback query
     if (error.code === '42703' && error.message.includes('name')) {
       try {
@@ -399,30 +419,58 @@ app.get('/api/boards', async (req, res) => {
   }
 });
 
-// Get threads for a board
+// Get threads for a board - Fixed version
 app.get('/api/boards/:key/threads', async (req, res) => {
   try {
     const { key } = req.params;
     
-    const { rows: threads } = await query(`
-      SELECT t.id, t.title, t.signal_type, t.tags, t.sticky, t.locked, 
-             t.created_at, t.updated_at, u.handle_number as author,
-             (SELECT COUNT(*) FROM posts WHERE thread_id = t.id) as post_count
-      FROM threads t
-      JOIN boards b ON t.board_id = b.id
-      JOIN users u ON t.author_id = u.id
-      WHERE b.key = $1
-      ORDER BY t.sticky DESC, t.updated_at DESC
-    `, [key]);
-
-    res.json({ threads });
+    // Try with signal_type column first
+    try {
+      const { rows: threads } = await query(`
+        SELECT t.id, t.title, t.signal_type, t.tags, t.sticky, t.locked,
+               t.created_at, t.updated_at, u.handle_number as author,
+               (SELECT COUNT(*) FROM posts WHERE thread_id = t.id) as post_count
+        FROM threads t
+        JOIN boards b ON t.board_id = b.id
+        JOIN users u ON t.author_id = u.id
+        WHERE b.key = $1
+        ORDER BY t.sticky DESC, t.updated_at DESC
+      `, [key]);
+      
+      res.json({ threads });
+    } catch (columnError) {
+      // Fallback without signal_type column
+      if (columnError.code === '42703' && columnError.message.includes('signal_type')) {
+        console.log('Fallback: getting threads without signal_type column');
+        const { rows: threads } = await query(`
+          SELECT t.id, t.title, t.tags, t.sticky, t.locked,
+                 t.created_at, t.updated_at, u.handle_number as author,
+                 (SELECT COUNT(*) FROM posts WHERE thread_id = t.id) as post_count
+          FROM threads t
+          JOIN boards b ON t.board_id = b.id
+          JOIN users u ON t.author_id = u.id
+          WHERE b.key = $1
+          ORDER BY t.sticky DESC, t.updated_at DESC
+        `, [key]);
+        
+        // Add signal_type as null for consistency
+        const threadsWithSignal = threads.map(thread => ({
+          ...thread,
+          signal_type: null
+        }));
+        
+        res.json({ threads: threadsWithSignal });
+      } else {
+        throw columnError;
+      }
+    }
   } catch (error) {
     console.error('Get threads error:', error);
     res.status(500).json({ error: 'Failed to get threads' });
   }
 });
 
-// Create thread
+// Create thread - Fixed version
 app.post('/api/boards/:key/threads', authRequired, async (req, res) => {
   try {
     const { key } = req.params;
@@ -438,34 +486,71 @@ app.post('/api/boards/:key/threads', authRequired, async (req, res) => {
       return res.status(404).json({ error: 'Board not found' });
     }
 
-    // Create thread
-    const { rows: [thread] } = await query(`
-      INSERT INTO threads (board_id, author_id, title, body_md, signal_type, tags)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING id, title, signal_type, tags, created_at
-    `, [board.id, req.user.id, title, body_md, signal || null, tags || null]);
-
-    res.json({ thread });
+    // Try creating thread with signal_type column first
+    try {
+      const { rows: [thread] } = await query(`
+        INSERT INTO threads (board_id, author_id, title, body_md, signal_type, tags)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id, title, signal_type, tags, created_at
+      `, [board.id, req.user.id, title, body_md, signal || null, tags || null]);
+      
+      res.json({ thread });
+    } catch (columnError) {
+      // If signal_type column doesn't exist, create without it
+      if (columnError.code === '42703' && columnError.message.includes('signal_type')) {
+        console.log('Fallback: creating thread without signal_type column');
+        const { rows: [thread] } = await query(`
+          INSERT INTO threads (board_id, author_id, title, body_md, tags)
+          VALUES ($1, $2, $3, $4, $5)
+          RETURNING id, title, tags, created_at
+        `, [board.id, req.user.id, title, body_md, tags || null]);
+        
+        // Add signal_type to response for consistency
+        thread.signal_type = signal || null;
+        res.json({ thread });
+      } else {
+        throw columnError;
+      }
+    }
   } catch (error) {
     console.error('Create thread error:', error);
     res.status(500).json({ error: 'Failed to create thread' });
   }
 });
 
-// Get thread with posts
+// Get thread with posts - Fixed version
 app.get('/api/threads/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Get thread
-    const { rows: [thread] } = await query(`
-      SELECT t.id, t.title, t.body_md, t.signal_type, t.tags, t.sticky, t.locked,
-             t.created_at, u.handle_number as author, b.name as board_name, b.key as board_key
-      FROM threads t
-      JOIN users u ON t.author_id = u.id
-      JOIN boards b ON t.board_id = b.id
-      WHERE t.id = $1
-    `, [id]);
+    // Get thread - try with signal_type first, fallback without
+    let thread;
+    try {
+      const { rows: [threadData] } = await query(`
+        SELECT t.id, t.title, t.body_md, t.signal_type, t.tags, t.sticky, t.locked,
+               t.created_at, u.handle_number as author, b.name as board_name, b.key as board_key
+        FROM threads t
+        JOIN users u ON t.author_id = u.id
+        JOIN boards b ON t.board_id = b.id
+        WHERE t.id = $1
+      `, [id]);
+      thread = threadData;
+    } catch (columnError) {
+      if (columnError.code === '42703') {
+        console.log('Fallback: getting thread without signal_type or board name');
+        const { rows: [threadData] } = await query(`
+          SELECT t.id, t.title, t.body_md, t.tags, t.sticky, t.locked,
+                 t.created_at, u.handle_number as author, b.key as board_key
+          FROM threads t
+          JOIN users u ON t.author_id = u.id
+          JOIN boards b ON t.board_id = b.id
+          WHERE t.id = $1
+        `, [id]);
+        thread = { ...threadData, signal_type: null, board_name: threadData.board_key };
+      } else {
+        throw columnError;
+      }
+    }
 
     if (!thread) {
       return res.status(404).json({ error: 'Thread not found' });
@@ -521,12 +606,13 @@ app.post('/api/threads/:id/posts', authRequired, async (req, res) => {
     // Update thread timestamp
     await query('UPDATE threads SET updated_at = now() WHERE id = $1', [id]);
 
-    res.json({ 
+    res.json({
       post: {
         ...post,
         author: req.user.handle_number
       }
     });
+
   } catch (error) {
     console.error('Create post error:', error);
     res.status(500).json({ error: 'Failed to create post' });
@@ -542,7 +628,7 @@ app.patch('/api/threads/:id', authRequired, async (req, res) => {
 
     const { id } = req.params;
     const { sticky, locked } = req.body;
-    
+
     const updates = [];
     const values = [];
     let paramCount = 1;
@@ -562,7 +648,7 @@ app.patch('/api/threads/:id', authRequired, async (req, res) => {
     }
 
     values.push(id);
-    
+
     const { rows: [thread] } = await query(`
       UPDATE threads SET ${updates.join(', ')}, updated_at = now()
       WHERE id = $${paramCount}
@@ -574,6 +660,7 @@ app.patch('/api/threads/:id', authRequired, async (req, res) => {
     }
 
     res.json({ thread });
+
   } catch (error) {
     console.error('Moderate thread error:', error);
     res.status(500).json({ error: 'Failed to moderate thread' });
@@ -614,6 +701,32 @@ app.get('/api/chat/rooms/:key/messages', authRequired, async (req, res) => {
   }
 });
 
+// Debug route (remove in production)
+app.get('/api/debug/schema', async (req, res) => {
+  try {
+    const threadsSchema = await query(`
+      SELECT column_name, data_type, is_nullable 
+      FROM information_schema.columns 
+      WHERE table_name = 'threads' 
+      ORDER BY ordinal_position
+    `);
+    
+    const boardsSchema = await query(`
+      SELECT column_name, data_type, is_nullable 
+      FROM information_schema.columns 
+      WHERE table_name = 'boards' 
+      ORDER BY ordinal_position
+    `);
+    
+    res.json({ 
+      threads: threadsSchema.rows,
+      boards: boardsSchema.rows 
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // --- Chat via Socket.IO ---
 function parseCookie(header) {
   const out = {};
@@ -637,6 +750,7 @@ io.use((socket, next) => {
       token = cookies.token;
     }
     if (!token) return next(new Error('auth_required'));
+    
     const decoded = jwt.verify(token, JWT_SECRET);
     socket.user = decoded;
     next();
@@ -647,25 +761,26 @@ io.use((socket, next) => {
 
 io.on('connection', (socket) => {
   socket.join('global');
-  
+
   socket.on('join', (roomKey) => {
     Object.keys(socket.rooms).forEach(r => {
       if (r !== socket.id) socket.leave(r);
     });
     socket.join(roomKey);
   });
-  
+
   socket.on('message', async ({ roomKey, body }) => {
     try {
       const { rows: roomRows } = await query(`SELECT id FROM chat_rooms WHERE key=$1`, [roomKey]);
       const room = roomRows[0];
       if (!room) return;
-      
+
       await query(`INSERT INTO messages(room_id, author_id, body) VALUES($1,$2,$3)`, [room.id, socket.user.id, body]);
-      io.to(roomKey).emit('message', { 
-        author: socket.user.handle_number, 
-        body, 
-        created_at: new Date().toISOString() 
+
+      io.to(roomKey).emit('message', {
+        author: socket.user.handle_number,
+        body,
+        created_at: new Date().toISOString()
       });
     } catch (error) {
       console.error('Socket message error:', error);
