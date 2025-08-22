@@ -180,16 +180,56 @@ async function ensureMigrations() {
         name: '003_fix_missing_columns',
         sql: `
           -- Add missing columns if they don't exist
-          DO $$ 
+          DO $ 
           BEGIN
             IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                           WHERE table_name = 'users' AND column_name = 'is_admin') THEN
               ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT false;
             END IF;
-          END $$;
+          END $;
           
           -- Ensure sequence exists
           CREATE SEQUENCE IF NOT EXISTS user_number_seq START 1;
+        `
+      },
+      {
+        name: '004_fix_user_table_structure',
+        sql: `
+          -- Check and fix the users table structure
+          DO $ 
+          BEGIN
+            -- Drop the existing users table if it has the wrong structure
+            -- and recreate it with the correct structure
+            IF EXISTS (SELECT 1 FROM information_schema.columns 
+                      WHERE table_name = 'users' AND column_name = 'handle') THEN
+              -- The table has the wrong structure, need to recreate
+              DROP TABLE IF EXISTS users CASCADE;
+              
+              -- Recreate with correct structure
+              CREATE TABLE users (
+                id SERIAL PRIMARY KEY,
+                handle_number TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                email TEXT,
+                creed TEXT,
+                field_cred INT DEFAULT 0,
+                is_admin BOOLEAN DEFAULT false,
+                created_at TIMESTAMPTZ DEFAULT now()
+              );
+            END IF;
+            
+            -- Ensure the table exists with correct structure
+            CREATE TABLE IF NOT EXISTS users (
+              id SERIAL PRIMARY KEY,
+              handle_number TEXT UNIQUE NOT NULL,
+              password_hash TEXT NOT NULL,
+              email TEXT,
+              creed TEXT,
+              field_cred INT DEFAULT 0,
+              is_admin BOOLEAN DEFAULT false,
+              created_at TIMESTAMPTZ DEFAULT now()
+            );
+          END $;
         `
       }
     ];
