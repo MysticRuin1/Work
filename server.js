@@ -219,6 +219,55 @@ async function ensureMigrations() {
           -- Ensure all constraints are in place
           SELECT 1 as setup_complete;
         `
+      },
+      {
+        name: '005_fix_boards_table',
+        sql: `
+          -- Ensure boards table has all required columns
+          ALTER TABLE boards ADD COLUMN IF NOT EXISTS name TEXT;
+          ALTER TABLE boards ADD COLUMN IF NOT EXISTS description TEXT;
+          ALTER TABLE boards ADD COLUMN IF NOT EXISTS key TEXT;
+          
+          -- Add unique constraints if they don't exist
+          DO $$ 
+          BEGIN
+            BEGIN
+              ALTER TABLE boards ADD CONSTRAINT boards_name_key UNIQUE (name);
+            EXCEPTION
+              WHEN duplicate_table THEN NULL;
+              WHEN duplicate_object THEN NULL;
+            END;
+            
+            BEGIN
+              ALTER TABLE boards ADD CONSTRAINT boards_key_key UNIQUE (key);
+            EXCEPTION
+              WHEN duplicate_table THEN NULL;
+              WHEN duplicate_object THEN NULL;
+            END;
+          END $$;
+          
+          -- Update any existing boards that might be missing data
+          UPDATE boards SET 
+            name = COALESCE(name, key, 'Unnamed Board'),
+            description = COALESCE(description, 'No description'),
+            key = COALESCE(key, lower(replace(name, ' ', '-')))
+          WHERE name IS NULL OR description IS NULL OR key IS NULL;
+          
+          -- Insert default boards if they don't exist
+          INSERT INTO boards (name, description, key) VALUES
+            ('Firelight', 'Discussion about cryptids and monsters', 'firelight'),
+            ('Judgment Day', 'Hunter tactics and survival', 'judgment-day'),
+            ('Triage', 'Medical and psychological support', 'triage'),
+            ('Unity', 'Organizing hunters together', 'unity'),
+            ('Vigil', 'Field reports and sightings', 'vigil'),
+            ('Vitalis', 'Research and lore', 'vitalis')
+          ON CONFLICT (name) DO NOTHING
+          ON CONFLICT (key) DO NOTHING;
+          
+          -- Make name column NOT NULL after ensuring all rows have values
+          ALTER TABLE boards ALTER COLUMN name SET NOT NULL;
+          ALTER TABLE boards ALTER COLUMN key SET NOT NULL;
+        `
       }
     ];
 
@@ -372,7 +421,7 @@ app.post('/api/logout', (req, res) => {
   res.json({ success: true });
 });
 
-// Get boards
+// Get boards - Fixed version with error handling
 app.get('/api/boards', async (req, res) => {
   try {
     const { rows: boards } = await query(
@@ -381,7 +430,24 @@ app.get('/api/boards', async (req, res) => {
     res.json({ boards });
   } catch (error) {
     console.error('Get boards error:', error);
-    res.status(500).json({ error: 'Failed to get boards' });
+    
+    // If the name column doesn't exist, try a fallback query
+    if (error.code === '42703' && error.message.includes('name')) {
+      try {
+        console.log('Attempting fallback query for boards...');
+        const { rows: boards } = await query('SELECT id, key, description FROM boards ORDER BY key');
+        const fixedBoards = boards.map(board => ({
+          ...board,
+          name: board.key || 'Unnamed Board'
+        }));
+        res.json({ boards: fixedBoards });
+      } catch (fallbackError) {
+        console.error('Fallback query also failed:', fallbackError);
+        res.status(500).json({ error: 'Failed to get boards' });
+      }
+    } else {
+      res.status(500).json({ error: 'Failed to get boards' });
+    }
   }
 });
 
