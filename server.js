@@ -203,9 +203,6 @@ async function ensureMigrations() {
             active = COALESCE(active, 'active')
           WHERE handle IS NULL OR number IS NULL OR member IS NULL OR active IS NULL;
           
-          -- Make number column NOT NULL
-          ALTER TABLE users ALTER COLUMN number SET NOT NULL;
-          
           -- Ensure sequence exists
           CREATE SEQUENCE IF NOT EXISTS user_number_seq START 1;
           
@@ -218,69 +215,6 @@ async function ensureMigrations() {
         sql: `
           -- Ensure all constraints are in place
           SELECT 1 as setup_complete;
-        `
-      },
-      {
-        name: '005_fix_boards_table',
-        sql: `
-          -- Ensure boards table has all required columns
-          ALTER TABLE boards ADD COLUMN IF NOT EXISTS name TEXT;
-          ALTER TABLE boards ADD COLUMN IF NOT EXISTS description TEXT;
-          ALTER TABLE boards ADD COLUMN IF NOT EXISTS key TEXT;
-          
-          -- Add unique constraints if they don't exist
-          DO $ 
-          BEGIN
-            BEGIN
-              ALTER TABLE boards ADD CONSTRAINT boards_name_key UNIQUE (name);
-            EXCEPTION
-              WHEN duplicate_table THEN NULL;
-              WHEN duplicate_object THEN NULL;
-            END;
-            
-            BEGIN
-              ALTER TABLE boards ADD CONSTRAINT boards_key_key UNIQUE (key);
-            EXCEPTION
-              WHEN duplicate_table THEN NULL;
-              WHEN duplicate_object THEN NULL;
-            END;
-          END $;
-          
-          -- Update any existing boards that might be missing data
-          UPDATE boards SET 
-            name = COALESCE(name, key, 'Unnamed Board'),
-            description = COALESCE(description, 'No description'),
-            key = COALESCE(key, lower(replace(name, ' ', '-')))
-          WHERE name IS NULL OR description IS NULL OR key IS NULL;
-          
-          -- Insert default boards (using separate statements to avoid ON CONFLICT issues)
-          INSERT INTO boards (name, description, key) 
-          SELECT 'Firelight', 'Discussion about cryptids and monsters', 'firelight'
-          WHERE NOT EXISTS (SELECT 1 FROM boards WHERE name = 'Firelight' OR key = 'firelight');
-          
-          INSERT INTO boards (name, description, key) 
-          SELECT 'Judgment Day', 'Hunter tactics and survival', 'judgment-day'
-          WHERE NOT EXISTS (SELECT 1 FROM boards WHERE name = 'Judgment Day' OR key = 'judgment-day');
-          
-          INSERT INTO boards (name, description, key) 
-          SELECT 'Triage', 'Medical and psychological support', 'triage'
-          WHERE NOT EXISTS (SELECT 1 FROM boards WHERE name = 'Triage' OR key = 'triage');
-          
-          INSERT INTO boards (name, description, key) 
-          SELECT 'Unity', 'Organizing hunters together', 'unity'
-          WHERE NOT EXISTS (SELECT 1 FROM boards WHERE name = 'Unity' OR key = 'unity');
-          
-          INSERT INTO boards (name, description, key) 
-          SELECT 'Vigil', 'Field reports and sightings', 'vigil'
-          WHERE NOT EXISTS (SELECT 1 FROM boards WHERE name = 'Vigil' OR key = 'vigil');
-          
-          INSERT INTO boards (name, description, key) 
-          SELECT 'Vitalis', 'Research and lore', 'vitalis'
-          WHERE NOT EXISTS (SELECT 1 FROM boards WHERE name = 'Vitalis' OR key = 'vitalis');
-          
-          -- Make name column NOT NULL after ensuring all rows have values
-          ALTER TABLE boards ALTER COLUMN name SET NOT NULL;
-          ALTER TABLE boards ALTER COLUMN key SET NOT NULL;
         `
       }
     ];
