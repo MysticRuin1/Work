@@ -95,16 +95,20 @@ async function ensureMigrations() {
           -- Create sequence first
           CREATE SEQUENCE IF NOT EXISTS user_number_seq START 1;
           
-          -- Create users table
+          -- Create users table to match actual database schema
           CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
+            handle TEXT,
+            number INT NOT NULL,
             handle_number TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
             email TEXT,
+            password_hash TEXT NOT NULL,
             creed TEXT,
+            member TEXT DEFAULT 'member',
             field_cred INT DEFAULT 0,
-            is_admin BOOLEAN DEFAULT false,
-            created_at TIMESTAMPTZ DEFAULT now()
+            active TEXT DEFAULT 'active',
+            created_at TIMESTAMPTZ DEFAULT now(),
+            is_admin BOOLEAN DEFAULT false
           );
 
           CREATE TABLE IF NOT EXISTS chat_rooms (
@@ -177,20 +181,42 @@ async function ensureMigrations() {
         `
       },
       {
-        name: '003_fix_missing_columns',
+        name: '003_fix_existing_schema',
         sql: `
           -- Add missing columns if they don't exist
-          ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT false;
+          ALTER TABLE users ADD COLUMN IF NOT EXISTS handle TEXT;
+          ALTER TABLE users ADD COLUMN IF NOT EXISTS number INT;
+          ALTER TABLE users ADD COLUMN IF NOT EXISTS member TEXT DEFAULT 'member';
+          ALTER TABLE users ADD COLUMN IF NOT EXISTS active TEXT DEFAULT 'active';
+          
+          -- Update existing users to have proper values if they're missing
+          UPDATE users SET 
+            handle = CASE 
+              WHEN handle IS NULL THEN split_part(handle_number, regexp_replace(handle_number, '[^0-9].*$', '', 'g'), 1)
+              ELSE handle 
+            END,
+            number = CASE 
+              WHEN number IS NULL THEN COALESCE(CAST(regexp_replace(handle_number, '^[^0-9]*', '', 'g') AS INT), 1)
+              ELSE number 
+            END,
+            member = COALESCE(member, 'member'),
+            active = COALESCE(active, 'active')
+          WHERE handle IS NULL OR number IS NULL OR member IS NULL OR active IS NULL;
+          
+          -- Make number column NOT NULL
+          ALTER TABLE users ALTER COLUMN number SET NOT NULL;
           
           -- Ensure sequence exists
           CREATE SEQUENCE IF NOT EXISTS user_number_seq START 1;
+          
+          -- Update sequence to be higher than existing numbers
+          SELECT setval('user_number_seq', COALESCE((SELECT MAX(number) FROM users), 0) + 1, false);
         `
       },
       {
-        name: '005_complete_setup',
+        name: '004_complete_setup',
         sql: `
-          -- Simple migration to complete setup
-          -- Just ensure everything is ready for registration
+          -- Ensure all constraints are in place
           SELECT 1 as setup_complete;
         `
       }
@@ -234,10 +260,10 @@ app.post('/api/register', async (req, res) => {
     // Hash password
     const password_hash = await bcrypt.hash(password, 12);
 
-    // Create user - include handle column if it exists
+    // Create user with correct schema
     const { rows: [user] } = await query(
-      'INSERT INTO users (handle, handle_number, password_hash, email, creed) VALUES ($1, $2, $3, $4, $5) RETURNING id, handle_number, field_cred, is_admin',
-      [handle, handle_number, password_hash, email || null, creed || null]
+      'INSERT INTO users (handle, number, handle_number, password_hash, email, creed, member, active) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, handle_number, field_cred, is_admin',
+      [handle, nextval, handle_number, password_hash, email || null, creed || null, 'member', 'active']
     );
 
     // Sign JWT
