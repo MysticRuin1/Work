@@ -72,110 +72,141 @@ async function query(q, params) {
 
 // --- Migration helper ---
 async function ensureMigrations() {
-  await query(`
-    CREATE TABLE IF NOT EXISTS schema_migrations(
-      id serial PRIMARY KEY,
-      name text UNIQUE,
-      run_at timestamptz DEFAULT now()
-    );
-  `);
-  const { rows } = await query(`SELECT name FROM schema_migrations`);
-  const ran = new Set(rows.map(r => r.name));
+  try {
+    console.log('Starting migrations...');
+    
+    // Create migrations table
+    await query(`
+      CREATE TABLE IF NOT EXISTS schema_migrations(
+        id serial PRIMARY KEY,
+        name text UNIQUE,
+        run_at timestamptz DEFAULT now()
+      );
+    `);
+    
+    const { rows } = await query(`SELECT name FROM schema_migrations`);
+    const ran = new Set(rows.map(r => r.name));
+    console.log('Previously run migrations:', Array.from(ran));
 
-  const steps = [
-    {
-      name: '001_init',
-      sql: `
-        CREATE TABLE IF NOT EXISTS users (
-          id SERIAL PRIMARY KEY,
-          handle_number TEXT UNIQUE NOT NULL,
-          password_hash TEXT NOT NULL,
-          email TEXT,
-          creed TEXT,
-          field_cred INT DEFAULT 0,
-          is_admin BOOLEAN DEFAULT false,
-          created_at TIMESTAMPTZ DEFAULT now()
-        );
+    const steps = [
+      {
+        name: '001_init',
+        sql: `
+          -- Create sequence first
+          CREATE SEQUENCE IF NOT EXISTS user_number_seq START 1;
+          
+          -- Create users table
+          CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            handle_number TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            email TEXT,
+            creed TEXT,
+            field_cred INT DEFAULT 0,
+            is_admin BOOLEAN DEFAULT false,
+            created_at TIMESTAMPTZ DEFAULT now()
+          );
 
-        CREATE TABLE IF NOT EXISTS chat_rooms (
-          id SERIAL PRIMARY KEY,
-          key TEXT UNIQUE NOT NULL,
-          title TEXT NOT NULL,
-          created_at TIMESTAMPTZ DEFAULT now()
-        );
+          CREATE TABLE IF NOT EXISTS chat_rooms (
+            id SERIAL PRIMARY KEY,
+            key TEXT UNIQUE NOT NULL,
+            title TEXT NOT NULL,
+            created_at TIMESTAMPTZ DEFAULT now()
+          );
 
-        CREATE TABLE IF NOT EXISTS messages (
-          id SERIAL PRIMARY KEY,
-          room_id INT REFERENCES chat_rooms(id) ON DELETE CASCADE,
-          author_id INT REFERENCES users(id) ON DELETE CASCADE,
-          body TEXT NOT NULL,
-          created_at TIMESTAMPTZ DEFAULT now()
-        );
+          CREATE TABLE IF NOT EXISTS messages (
+            id SERIAL PRIMARY KEY,
+            room_id INT REFERENCES chat_rooms(id) ON DELETE CASCADE,
+            author_id INT REFERENCES users(id) ON DELETE CASCADE,
+            body TEXT NOT NULL,
+            created_at TIMESTAMPTZ DEFAULT now()
+          );
 
-        CREATE TABLE IF NOT EXISTS boards (
-          id SERIAL PRIMARY KEY,
-          name TEXT UNIQUE NOT NULL,
-          description TEXT,
-          key TEXT UNIQUE NOT NULL,
-          created_at TIMESTAMPTZ DEFAULT now()
-        );
+          CREATE TABLE IF NOT EXISTS boards (
+            id SERIAL PRIMARY KEY,
+            name TEXT UNIQUE NOT NULL,
+            description TEXT,
+            key TEXT UNIQUE NOT NULL,
+            created_at TIMESTAMPTZ DEFAULT now()
+          );
 
-        CREATE TABLE IF NOT EXISTS threads (
-          id SERIAL PRIMARY KEY,
-          board_id INT REFERENCES boards(id) ON DELETE CASCADE,
-          author_id INT REFERENCES users(id) ON DELETE CASCADE,
-          title TEXT NOT NULL,
-          body_md TEXT,
-          signal_type TEXT,
-          tags TEXT,
-          sticky BOOLEAN DEFAULT false,
-          locked BOOLEAN DEFAULT false,
-          created_at TIMESTAMPTZ DEFAULT now(),
-          updated_at TIMESTAMPTZ DEFAULT now()
-        );
+          CREATE TABLE IF NOT EXISTS threads (
+            id SERIAL PRIMARY KEY,
+            board_id INT REFERENCES boards(id) ON DELETE CASCADE,
+            author_id INT REFERENCES users(id) ON DELETE CASCADE,
+            title TEXT NOT NULL,
+            body_md TEXT,
+            signal_type TEXT,
+            tags TEXT,
+            sticky BOOLEAN DEFAULT false,
+            locked BOOLEAN DEFAULT false,
+            created_at TIMESTAMPTZ DEFAULT now(),
+            updated_at TIMESTAMPTZ DEFAULT now()
+          );
 
-        CREATE TABLE IF NOT EXISTS posts (
-          id SERIAL PRIMARY KEY,
-          thread_id INT REFERENCES threads(id) ON DELETE CASCADE,
-          author_id INT REFERENCES users(id) ON DELETE CASCADE,
-          body_md TEXT NOT NULL,
-          created_at TIMESTAMPTZ DEFAULT now()
-        );
+          CREATE TABLE IF NOT EXISTS posts (
+            id SERIAL PRIMARY KEY,
+            thread_id INT REFERENCES threads(id) ON DELETE CASCADE,
+            author_id INT REFERENCES users(id) ON DELETE CASCADE,
+            body_md TEXT NOT NULL,
+            created_at TIMESTAMPTZ DEFAULT now()
+          );
+        `
+      },
+      {
+        name: '002_seed_boards_rooms',
+        sql: `
+          INSERT INTO chat_rooms (key, title) VALUES
+            ('global', 'Global Chat'),
+            ('firelight', 'Firelight'),
+            ('judgment-day', 'Judgment Day'),
+            ('triage', 'Triage'),
+            ('unity', 'Unity'),
+            ('vigil', 'Vigil'),
+            ('vitalis', 'Vitalis')
+          ON CONFLICT (key) DO NOTHING;
 
-        CREATE SEQUENCE IF NOT EXISTS user_number_seq START 1;
-      `
-    },
-    {
-      name: '002_seed_boards_rooms',
-      sql: `
-        INSERT INTO chat_rooms (key, title) VALUES
-          ('global', 'Global Chat'),
-          ('firelight', 'Firelight'),
-          ('judgment-day', 'Judgment Day'),
-          ('triage', 'Triage'),
-          ('unity', 'Unity'),
-          ('vigil', 'Vigil'),
-          ('vitalis', 'Vitalis')
-        ON CONFLICT (key) DO NOTHING;
+          INSERT INTO boards (name, description, key) VALUES
+            ('Firelight', 'Discussion about cryptids and monsters', 'firelight'),
+            ('Judgment Day', 'Hunter tactics and survival', 'judgment-day'),
+            ('Triage', 'Medical and psychological support', 'triage'),
+            ('Unity', 'Organizing hunters together', 'unity'),
+            ('Vigil', 'Field reports and sightings', 'vigil'),
+            ('Vitalis', 'Research and lore', 'vitalis')
+          ON CONFLICT (name) DO NOTHING;
+        `
+      },
+      {
+        name: '003_fix_missing_columns',
+        sql: `
+          -- Add missing columns if they don't exist
+          DO $$ 
+          BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name = 'users' AND column_name = 'is_admin') THEN
+              ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT false;
+            END IF;
+          END $$;
+          
+          -- Ensure sequence exists
+          CREATE SEQUENCE IF NOT EXISTS user_number_seq START 1;
+        `
+      }
+    ];
 
-        INSERT INTO boards (name, description, key) VALUES
-          ('Firelight', 'Discussion about cryptids and monsters', 'firelight'),
-          ('Judgment Day', 'Hunter tactics and survival', 'judgment-day'),
-          ('Triage', 'Medical and psychological support', 'triage'),
-          ('Unity', 'Organizing hunters together', 'unity'),
-          ('Vigil', 'Field reports and sightings', 'vigil'),
-          ('Vitalis', 'Research and lore', 'vitalis')
-        ON CONFLICT (name) DO NOTHING;
-      `
+    for (const step of steps) {
+      if (!ran.has(step.name)) {
+        console.log(`Running migration: ${step.name}`);
+        await query(step.sql);
+        await query(`INSERT INTO schema_migrations(name) VALUES($1)`, [step.name]);
+        console.log(`Completed migration: ${step.name}`);
+      }
     }
-  ];
-
-  for (const step of steps) {
-    if (!ran.has(step.name)) {
-      await query(step.sql);
-      await query(`INSERT INTO schema_migrations(name) VALUES($1)`, [step.name]);
-      console.log('Ran migration', step.name);
-    }
+    
+    console.log('Migrations completed successfully');
+  } catch (error) {
+    console.error('Migration error:', error);
+    throw error;
   }
 }
 
