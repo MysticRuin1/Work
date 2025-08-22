@@ -24,8 +24,6 @@ function CHECK_ENV() {
   if (!process.env.PORT) errs.push('PORT not set');
   if (errs.length) {
     console.warn('[Config] Missing variables:', errs.join(', '));
-  } else {
-    console.log('[Config] All environment variables set');
   }
 }
 CHECK_ENV();
@@ -39,27 +37,12 @@ const pool = new Pool({
     : false
 });
 
-// Test database connection
-pool.query('SELECT NOW()', (err, res) => {
-  if (err) {
-    console.error('Database connection failed:', err);
-  } else {
-    console.log('Database connected successfully:', res.rows[0].now);
-  }
-});
-
 // --- Middleware ---
 app.use(helmet({ contentSecurityPolicy: false }));
-app.use(cors({ origin: true, credentials: true }));
+app.use(cors({ origin: "*", credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
-
-// Request logging
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);
-  next();
-});
 
 // --- Utilities ---
 function signToken(payload) {
@@ -73,8 +56,7 @@ function authRequired(req, res, next) {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
     next();
-  } catch (e) {
-    console.error('JWT verification failed:', e.message);
+  } catch {
     return res.status(401).json({ error: 'invalid_token' });
   }
 }
@@ -82,11 +64,7 @@ function authRequired(req, res, next) {
 async function query(q, params) {
   const client = await pool.connect();
   try {
-    console.log('Executing query:', q.substring(0, 100) + '...');
     return await client.query(q, params);
-  } catch (error) {
-    console.error('Database query error:', error);
-    throw error;
   } finally {
     client.release();
   }
@@ -94,127 +72,110 @@ async function query(q, params) {
 
 // --- Migration helper ---
 async function ensureMigrations() {
-  console.log('Running database migrations...');
-  
-  try {
-    await query(`
-      CREATE TABLE IF NOT EXISTS schema_migrations(
-        id serial PRIMARY KEY,
-        name text UNIQUE,
-        run_at timestamptz DEFAULT now()
-      );
-    `);
-    
-    const { rows } = await query(`SELECT name FROM schema_migrations`);
-    const ran = new Set(rows.map(r => r.name));
+  await query(`
+    CREATE TABLE IF NOT EXISTS schema_migrations(
+      id serial PRIMARY KEY,
+      name text UNIQUE,
+      run_at timestamptz DEFAULT now()
+    );
+  `);
+  const { rows } = await query(`SELECT name FROM schema_migrations`);
+  const ran = new Set(rows.map(r => r.name));
 
-    const steps = [
-      {
-        name: '001_init',
-        sql: `
-          CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            handle_number TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            email TEXT,
-            creed TEXT,
-            field_cred INT DEFAULT 0,
-            is_admin BOOLEAN DEFAULT false,
-            created_at TIMESTAMPTZ DEFAULT now()
-          );
+  const steps = [
+    {
+      name: '001_init',
+      sql: `
+        CREATE TABLE IF NOT EXISTS users (
+          id SERIAL PRIMARY KEY,
+          handle_number TEXT UNIQUE NOT NULL,
+          password_hash TEXT NOT NULL,
+          email TEXT,
+          creed TEXT,
+          field_cred INT DEFAULT 0,
+          is_admin BOOLEAN DEFAULT false,
+          created_at TIMESTAMPTZ DEFAULT now()
+        );
 
-          CREATE TABLE IF NOT EXISTS chat_rooms (
-            id SERIAL PRIMARY KEY,
-            key TEXT UNIQUE NOT NULL,
-            title TEXT NOT NULL,
-            created_at TIMESTAMPTZ DEFAULT now()
-          );
+        CREATE TABLE IF NOT EXISTS chat_rooms (
+          id SERIAL PRIMARY KEY,
+          key TEXT UNIQUE NOT NULL,
+          title TEXT NOT NULL,
+          created_at TIMESTAMPTZ DEFAULT now()
+        );
 
-          CREATE TABLE IF NOT EXISTS messages (
-            id SERIAL PRIMARY KEY,
-            room_id INT REFERENCES chat_rooms(id) ON DELETE CASCADE,
-            author_id INT REFERENCES users(id) ON DELETE CASCADE,
-            body TEXT NOT NULL,
-            created_at TIMESTAMPTZ DEFAULT now()
-          );
+        CREATE TABLE IF NOT EXISTS messages (
+          id SERIAL PRIMARY KEY,
+          room_id INT REFERENCES chat_rooms(id) ON DELETE CASCADE,
+          author_id INT REFERENCES users(id) ON DELETE CASCADE,
+          body TEXT NOT NULL,
+          created_at TIMESTAMPTZ DEFAULT now()
+        );
 
-          CREATE TABLE IF NOT EXISTS boards (
-            id SERIAL PRIMARY KEY,
-            name TEXT UNIQUE NOT NULL,
-            description TEXT,
-            key TEXT UNIQUE NOT NULL,
-            created_at TIMESTAMPTZ DEFAULT now()
-          );
+        CREATE TABLE IF NOT EXISTS boards (
+          id SERIAL PRIMARY KEY,
+          name TEXT UNIQUE NOT NULL,
+          description TEXT,
+          key TEXT UNIQUE NOT NULL,
+          created_at TIMESTAMPTZ DEFAULT now()
+        );
 
-          CREATE TABLE IF NOT EXISTS threads (
-            id SERIAL PRIMARY KEY,
-            board_id INT REFERENCES boards(id) ON DELETE CASCADE,
-            author_id INT REFERENCES users(id) ON DELETE CASCADE,
-            title TEXT NOT NULL,
-            body_md TEXT,
-            signal_type TEXT,
-            tags TEXT,
-            sticky BOOLEAN DEFAULT false,
-            locked BOOLEAN DEFAULT false,
-            created_at TIMESTAMPTZ DEFAULT now(),
-            updated_at TIMESTAMPTZ DEFAULT now()
-          );
+        CREATE TABLE IF NOT EXISTS threads (
+          id SERIAL PRIMARY KEY,
+          board_id INT REFERENCES boards(id) ON DELETE CASCADE,
+          author_id INT REFERENCES users(id) ON DELETE CASCADE,
+          title TEXT NOT NULL,
+          body_md TEXT,
+          signal_type TEXT,
+          tags TEXT,
+          sticky BOOLEAN DEFAULT false,
+          locked BOOLEAN DEFAULT false,
+          created_at TIMESTAMPTZ DEFAULT now(),
+          updated_at TIMESTAMPTZ DEFAULT now()
+        );
 
-          CREATE TABLE IF NOT EXISTS posts (
-            id SERIAL PRIMARY KEY,
-            thread_id INT REFERENCES threads(id) ON DELETE CASCADE,
-            author_id INT REFERENCES users(id) ON DELETE CASCADE,
-            body_md TEXT NOT NULL,
-            created_at TIMESTAMPTZ DEFAULT now()
-          );
-        `
-      },
-      {
-        name: '002_seed_boards_rooms',
-        sql: `
-          INSERT INTO chat_rooms (key, title) VALUES
-            ('global', 'Global Chat'),
-            ('firelight', 'Firelight'),
-            ('judgment-day', 'Judgment Day'),
-            ('triage', 'Triage'),
-            ('unity', 'Unity'),
-            ('vigil', 'Vigil'),
-            ('vitalis', 'Vitalis')
-          ON CONFLICT (key) DO NOTHING;
+        CREATE TABLE IF NOT EXISTS posts (
+          id SERIAL PRIMARY KEY,
+          thread_id INT REFERENCES threads(id) ON DELETE CASCADE,
+          author_id INT REFERENCES users(id) ON DELETE CASCADE,
+          body_md TEXT NOT NULL,
+          created_at TIMESTAMPTZ DEFAULT now()
+        );
 
-          INSERT INTO boards (name, description, key) VALUES
-            ('Firelight', 'Discussion about cryptids and monsters', 'firelight'),
-            ('Judgment Day', 'Hunter tactics and survival', 'judgment-day'),
-            ('Triage', 'Medical and psychological support', 'triage'),
-            ('Unity', 'Organizing hunters together', 'unity'),
-            ('Vigil', 'Field reports and sightings', 'vigil'),
-            ('Vitalis', 'Research and lore', 'vitalis')
-          ON CONFLICT (name) DO NOTHING;
-        `
-      },
-      {
-        name: '003_test_user',
-        sql: `
-          INSERT INTO users (handle_number, password_hash, is_admin, field_cred)
-          VALUES ('Witness1', '$2b$12$LQv3c1yX8LyuGPlLAmJRb.sLc4Gm4FqfX8tFJv8O8K8WvJ3q9Y0Lm', true, 100)
-          ON CONFLICT (handle_number) DO NOTHING;
-        `
-      }
-    ];
+        CREATE SEQUENCE IF NOT EXISTS user_number_seq START 1;
+      `
+    },
+    {
+      name: '002_seed_boards_rooms',
+      sql: `
+        INSERT INTO chat_rooms (key, title) VALUES
+          ('global', 'Global Chat'),
+          ('firelight', 'Firelight'),
+          ('judgment-day', 'Judgment Day'),
+          ('triage', 'Triage'),
+          ('unity', 'Unity'),
+          ('vigil', 'Vigil'),
+          ('vitalis', 'Vitalis')
+        ON CONFLICT (key) DO NOTHING;
 
-    for (const step of steps) {
-      if (!ran.has(step.name)) {
-        await query(step.sql);
-        await query(`INSERT INTO schema_migrations(name) VALUES($1)`, [step.name]);
-        console.log('✅ Ran migration', step.name);
-      } else {
-        console.log('⏭️  Skipped migration', step.name);
-      }
+        INSERT INTO boards (name, description, key) VALUES
+          ('Firelight', 'Discussion about cryptids and monsters', 'firelight'),
+          ('Judgment Day', 'Hunter tactics and survival', 'judgment-day'),
+          ('Triage', 'Medical and psychological support', 'triage'),
+          ('Unity', 'Organizing hunters together', 'unity'),
+          ('Vigil', 'Field reports and sightings', 'vigil'),
+          ('Vitalis', 'Research and lore', 'vitalis')
+        ON CONFLICT (name) DO NOTHING;
+      `
     }
-    console.log('All migrations completed successfully');
-  } catch (error) {
-    console.error('Migration failed:', error);
-    throw error;
+  ];
+
+  for (const step of steps) {
+    if (!ran.has(step.name)) {
+      await query(step.sql);
+      await query(`INSERT INTO schema_migrations(name) VALUES($1)`, [step.name]);
+      console.log('Ran migration', step.name);
+    }
   }
 }
 
@@ -222,46 +183,29 @@ async function ensureMigrations() {
 
 // Register
 app.post('/api/register', async (req, res) => {
-  console.log('Registration attempt:', { ...req.body, password: '[HIDDEN]' });
-  
   try {
     const { handle, email, password, creed } = req.body;
     
     if (!handle || !password) {
-      console.log('Missing handle or password');
       return res.status(400).json({ error: 'Handle and password required' });
     }
 
     if (password.length < 8) {
-      console.log('Password too short');
       return res.status(400).json({ error: 'Password must be at least 8 characters' });
     }
 
-    if (!/^[a-zA-Z0-9_-]+$/.test(handle)) {
-      console.log('Invalid handle format');
-      return res.status(400).json({ error: 'Handle can only contain letters, numbers, hyphens, and underscores' });
-    }
-
-    // Generate unique handle number using timestamp + random
-    const timestamp = Date.now();
-    const random = Math.floor(Math.random() * 100);
-    const handle_number = `${handle}${timestamp % 10000}${random}`;
-
-    console.log('Generated handle_number:', handle_number);
+    // Generate unique handle number
+    const { rows: [{ nextval }] } = await query('SELECT nextval(\'user_number_seq\')');
+    const handle_number = `${handle}${nextval}`;
 
     // Hash password
-    console.log('Hashing password...');
     const password_hash = await bcrypt.hash(password, 12);
-    console.log('Password hashed successfully');
 
     // Create user
-    console.log('Creating user in database...');
     const { rows: [user] } = await query(
       'INSERT INTO users (handle_number, password_hash, email, creed) VALUES ($1, $2, $3, $4) RETURNING id, handle_number, field_cred, is_admin',
       [handle_number, password_hash, email || null, creed || null]
     );
-
-    console.log('User created:', { id: user.id, handle_number: user.handle_number });
 
     // Sign JWT
     const token = signToken({ 
@@ -273,11 +217,8 @@ app.post('/api/register', async (req, res) => {
     res.cookie('token', token, { 
       httpOnly: true, 
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
-
-    console.log('Registration successful for:', user.handle_number);
 
     res.json({
       user: {
@@ -289,17 +230,15 @@ app.post('/api/register', async (req, res) => {
   } catch (error) {
     console.error('Registration error:', error);
     if (error.code === '23505') { // Unique violation
-      res.status(400).json({ error: 'Handle already taken, please try a different one' });
+      res.status(400).json({ error: 'Handle already taken' });
     } else {
-      res.status(500).json({ error: 'Registration failed: ' + error.message });
+      res.status(500).json({ error: 'Registration failed' });
     }
   }
 });
 
 // Login
 app.post('/api/login', async (req, res) => {
-  console.log('Login attempt for:', req.body.handle_number);
-  
   try {
     const { handle_number, password } = req.body;
     
@@ -314,14 +253,12 @@ app.post('/api/login', async (req, res) => {
     );
 
     if (!user) {
-      console.log('User not found:', handle_number);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     // Check password
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) {
-      console.log('Invalid password for:', handle_number);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -335,11 +272,8 @@ app.post('/api/login', async (req, res) => {
     res.cookie('token', token, { 
       httpOnly: true, 
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
-
-    console.log('Login successful for:', user.handle_number);
 
     res.json({
       user: {
@@ -350,7 +284,7 @@ app.post('/api/login', async (req, res) => {
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Login failed: ' + error.message });
+    res.status(500).json({ error: 'Login failed' });
   }
 });
 
@@ -639,7 +573,6 @@ io.use((socket, next) => {
 });
 
 io.on('connection', (socket) => {
-  console.log('User connected to chat:', socket.user.handle_number);
   socket.join('global');
   
   socket.on('join', (roomKey) => {
@@ -647,7 +580,6 @@ io.on('connection', (socket) => {
       if (r !== socket.id) socket.leave(r);
     });
     socket.join(roomKey);
-    console.log(`${socket.user.handle_number} joined ${roomKey}`);
   });
   
   socket.on('message', async ({ roomKey, body }) => {
@@ -666,41 +598,25 @@ io.on('connection', (socket) => {
       console.error('Socket message error:', error);
     }
   });
-
-  socket.on('disconnect', () => {
-    console.log('User disconnected from chat:', socket.user.handle_number);
-  });
 });
 
-// --- Health check + Debug routes ---
-app.get('/healthz', (req, res) => res.json({ ok: true, timestamp: new Date().toISOString() }));
+// --- Health check + SPA fallback ---
+app.get('/healthz', (req, res) => res.json({ ok: true }));
 
-app.get('/debug/users', async (req, res) => {
-  try {
-    const { rows } = await query('SELECT handle_number, created_at, is_admin FROM users ORDER BY created_at DESC LIMIT 10');
-    res.json({ users: rows });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// SPA fallback
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.get(/^\/(?!api|healthz|debug|socket\.io).*/, (req, res) => {
+app.get(/^\/(?!api|healthz|socket\.io).*/, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // --- Start ---
 ensureMigrations().then(() => {
   server.listen(PORT, () => {
-    console.log(`🚀 Hunter-Net server running on port ${PORT}`);
-    console.log(`🔗 URL: http://localhost:${PORT}`);
-    console.log(`🧪 Test user: Witness1 / password123`);
+    console.log('Hunter-Net server running on port', PORT);
   });
 }).catch(err => {
-  console.error('❌ Startup failed:', err);
+  console.error('Migration error:', err);
   process.exit(1);
 });
