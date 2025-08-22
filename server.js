@@ -272,10 +272,10 @@ app.post('/api/register', async (req, res) => {
     // Hash password
     const password_hash = await bcrypt.hash(password, 12);
 
-    // Create user
+    // Create user - include handle column if it exists
     const { rows: [user] } = await query(
-      'INSERT INTO users (handle_number, password_hash, email, creed) VALUES ($1, $2, $3, $4) RETURNING id, handle_number, field_cred, is_admin',
-      [handle_number, password_hash, email || null, creed || null]
+      'INSERT INTO users (handle, handle_number, password_hash, email, creed) VALUES ($1, $2, $3, $4, $5) RETURNING id, handle_number, field_cred, is_admin',
+      [handle, handle_number, password_hash, email || null, creed || null]
     );
 
     // Sign JWT
