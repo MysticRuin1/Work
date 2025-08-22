@@ -229,7 +229,7 @@ async function ensureMigrations() {
           ALTER TABLE boards ADD COLUMN IF NOT EXISTS key TEXT;
           
           -- Add unique constraints if they don't exist
-          DO $$ 
+          DO $ 
           BEGIN
             BEGIN
               ALTER TABLE boards ADD CONSTRAINT boards_name_key UNIQUE (name);
@@ -244,7 +244,7 @@ async function ensureMigrations() {
               WHEN duplicate_table THEN NULL;
               WHEN duplicate_object THEN NULL;
             END;
-          END $$;
+          END $;
           
           -- Update any existing boards that might be missing data
           UPDATE boards SET 
@@ -253,16 +253,30 @@ async function ensureMigrations() {
             key = COALESCE(key, lower(replace(name, ' ', '-')))
           WHERE name IS NULL OR description IS NULL OR key IS NULL;
           
-          -- Insert default boards if they don't exist
-          INSERT INTO boards (name, description, key) VALUES
-            ('Firelight', 'Discussion about cryptids and monsters', 'firelight'),
-            ('Judgment Day', 'Hunter tactics and survival', 'judgment-day'),
-            ('Triage', 'Medical and psychological support', 'triage'),
-            ('Unity', 'Organizing hunters together', 'unity'),
-            ('Vigil', 'Field reports and sightings', 'vigil'),
-            ('Vitalis', 'Research and lore', 'vitalis')
-          ON CONFLICT (name) DO NOTHING
-          ON CONFLICT (key) DO NOTHING;
+          -- Insert default boards (using separate statements to avoid ON CONFLICT issues)
+          INSERT INTO boards (name, description, key) 
+          SELECT 'Firelight', 'Discussion about cryptids and monsters', 'firelight'
+          WHERE NOT EXISTS (SELECT 1 FROM boards WHERE name = 'Firelight' OR key = 'firelight');
+          
+          INSERT INTO boards (name, description, key) 
+          SELECT 'Judgment Day', 'Hunter tactics and survival', 'judgment-day'
+          WHERE NOT EXISTS (SELECT 1 FROM boards WHERE name = 'Judgment Day' OR key = 'judgment-day');
+          
+          INSERT INTO boards (name, description, key) 
+          SELECT 'Triage', 'Medical and psychological support', 'triage'
+          WHERE NOT EXISTS (SELECT 1 FROM boards WHERE name = 'Triage' OR key = 'triage');
+          
+          INSERT INTO boards (name, description, key) 
+          SELECT 'Unity', 'Organizing hunters together', 'unity'
+          WHERE NOT EXISTS (SELECT 1 FROM boards WHERE name = 'Unity' OR key = 'unity');
+          
+          INSERT INTO boards (name, description, key) 
+          SELECT 'Vigil', 'Field reports and sightings', 'vigil'
+          WHERE NOT EXISTS (SELECT 1 FROM boards WHERE name = 'Vigil' OR key = 'vigil');
+          
+          INSERT INTO boards (name, description, key) 
+          SELECT 'Vitalis', 'Research and lore', 'vitalis'
+          WHERE NOT EXISTS (SELECT 1 FROM boards WHERE name = 'Vitalis' OR key = 'vitalis');
           
           -- Make name column NOT NULL after ensuring all rows have values
           ALTER TABLE boards ALTER COLUMN name SET NOT NULL;
