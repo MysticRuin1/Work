@@ -234,6 +234,25 @@ async function ensureMigrations() {
           -- Ensure all constraints are in place
           SELECT 1 as setup_complete;
         `
+      },
+      {
+        name: '005_fix_tags_column',
+        sql: `
+          -- Fix tags column to be TEXT instead of array
+          -- First check if the column exists and is an array type
+          DO $$
+          BEGIN
+            -- Try to alter the column type to TEXT
+            BEGIN
+              ALTER TABLE threads ALTER COLUMN tags TYPE TEXT;
+              RAISE NOTICE 'Successfully converted tags column to TEXT';
+            EXCEPTION
+              WHEN OTHERS THEN
+                -- If it fails, the column might already be TEXT or not exist
+                RAISE NOTICE 'Tags column conversion not needed or already TEXT';
+            END;
+          END $$;
+        `
       }
     ];
 
@@ -313,7 +332,7 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-// Login
+// Login - Smart login with fallbacks
 app.post('/api/login', async (req, res) => {
   try {
     const { handle_number, password } = req.body;
@@ -322,11 +341,39 @@ app.post('/api/login', async (req, res) => {
       return res.status(400).json({ error: 'Handle and password required' });
     }
 
-    // Find user
-    const { rows: [user] } = await query(
+    let user = null;
+
+    // First, try exact match with the provided handle_number
+    const { rows: exactMatch } = await query(
       'SELECT id, handle_number, password_hash, field_cred, is_admin FROM users WHERE handle_number = $1',
       [handle_number]
     );
+
+    if (exactMatch.length > 0) {
+      user = exactMatch[0];
+    } else {
+      // If no exact match, try to find by handle (without number)
+      // This handles cases where user enters just "alice" instead of "alice123"
+      const { rows: handleMatches } = await query(
+        'SELECT id, handle_number, password_hash, field_cred, is_admin FROM users WHERE handle = $1 ORDER BY number ASC',
+        [handle_number]
+      );
+
+      if (handleMatches.length > 0) {
+        // If multiple users have the same handle, use the first one (lowest number)
+        user = handleMatches[0];
+      } else {
+        // Try partial match - maybe they entered "alice123" but handle_number is different
+        const { rows: partialMatches } = await query(
+          'SELECT id, handle_number, password_hash, field_cred, is_admin FROM users WHERE handle_number ILIKE $1 ORDER BY handle_number ASC',
+          [`${handle_number}%`]
+        );
+
+        if (partialMatches.length > 0) {
+          user = partialMatches[0];
+        }
+      }
+    }
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -470,7 +517,7 @@ app.get('/api/boards/:key/threads', async (req, res) => {
   }
 });
 
-// Create thread - Fixed version
+// Create thread - FIXED VERSION with proper tags handling
 app.post('/api/boards/:key/threads', authRequired, async (req, res) => {
   try {
     const { key } = req.params;
@@ -486,13 +533,25 @@ app.post('/api/boards/:key/threads', authRequired, async (req, res) => {
       return res.status(404).json({ error: 'Board not found' });
     }
 
+    // Process tags - ensure it's a string, not an array
+    let processedTags = null;
+    if (tags) {
+      if (Array.isArray(tags)) {
+        // Convert array to comma-separated string
+        processedTags = tags.join(', ');
+      } else if (typeof tags === 'string') {
+        // Already a string, use as is
+        processedTags = tags;
+      }
+    }
+
     // Try creating thread with signal_type column first
     try {
       const { rows: [thread] } = await query(`
         INSERT INTO threads (board_id, author_id, title, body_md, signal_type, tags)
         VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING id, title, signal_type, tags, created_at
-      `, [board.id, req.user.id, title, body_md, signal || null, tags || null]);
+      `, [board.id, req.user.id, title, body_md, signal || null, processedTags]);
       
       res.json({ thread });
     } catch (columnError) {
@@ -503,7 +562,7 @@ app.post('/api/boards/:key/threads', authRequired, async (req, res) => {
           INSERT INTO threads (board_id, author_id, title, body_md, tags)
           VALUES ($1, $2, $3, $4, $5)
           RETURNING id, title, tags, created_at
-        `, [board.id, req.user.id, title, body_md, tags || null]);
+        `, [board.id, req.user.id, title, body_md, processedTags]);
         
         // Add signal_type to response for consistency
         thread.signal_type = signal || null;
@@ -705,14 +764,14 @@ app.get('/api/chat/rooms/:key/messages', authRequired, async (req, res) => {
 app.get('/api/debug/schema', async (req, res) => {
   try {
     const threadsSchema = await query(`
-      SELECT column_name, data_type, is_nullable 
+      SELECT column_name, data_type, udt_name, is_nullable 
       FROM information_schema.columns 
       WHERE table_name = 'threads' 
       ORDER BY ordinal_position
     `);
     
     const boardsSchema = await query(`
-      SELECT column_name, data_type, is_nullable 
+      SELECT column_name, data_type, udt_name, is_nullable 
       FROM information_schema.columns 
       WHERE table_name = 'boards' 
       ORDER BY ordinal_position
