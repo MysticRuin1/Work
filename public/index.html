@@ -68,151 +68,6 @@
             to { transform: translateX(0); opacity: 1; }
         }
 
-        /* Voting system styles */
-        .vote-controls {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin-right: 15px;
-            min-width: 40px;
-        }
-
-        .vote-btn {
-            background: none;
-            border: 1px solid #333;
-            color: #666;
-            padding: 5px 8px;
-            cursor: pointer;
-            font-size: 16px;
-            border-radius: 3px;
-            margin: 2px 0;
-            transition: all 0.3s;
-        }
-
-        .vote-btn:hover {
-            background: #333;
-            color: #fff;
-        }
-
-        .vote-btn.active.upvote {
-            background: #228B22;
-            color: #fff;
-            border-color: #228B22;
-        }
-
-        .vote-btn.active.downvote {
-            background: #DC143C;
-            color: #fff;
-            border-color: #DC143C;
-        }
-
-        .vote-count {
-            color: #ff4444;
-            font-weight: bold;
-            font-size: 14px;
-            margin: 2px 0;
-        }
-
-        /* Content with voting layout */
-        .content-with-votes {
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-        }
-
-        .content-body {
-            flex: 1;
-        }
-
-        /* Image upload styles */
-        .image-upload {
-            margin: 10px 0;
-        }
-
-        .image-preview {
-            max-width: 100%;
-            max-height: 300px;
-            border-radius: 5px;
-            margin: 10px 0;
-        }
-
-        .uploaded-image {
-            max-width: 100%;
-            max-height: 400px;
-            border-radius: 5px;
-            margin: 10px 0;
-            cursor: pointer;
-            transition: transform 0.3s;
-        }
-
-        .uploaded-image:hover {
-            transform: scale(1.05);
-        }
-
-        /* Account management styles */
-        .account-section {
-            background: #1a0000;
-            border: 1px solid #330000;
-            padding: 20px;
-            border-radius: 5px;
-            margin: 20px 0;
-        }
-
-        .danger-zone {
-            border-color: #ff4444;
-            background: #2a0000;
-        }
-
-        .field-cred-display {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            background: #330000;
-            padding: 5px 10px;
-            border-radius: 3px;
-            border: 1px solid #ff4444;
-        }
-
-        /* Admin styles */
-        .admin-panel {
-            background: #1a1a00;
-            border: 2px solid #ffaa00;
-            border-radius: 5px;
-            padding: 20px;
-            margin: 20px 0;
-        }
-
-        .admin-controls {
-            display: flex;
-            gap: 10px;
-            margin: 10px 0;
-            flex-wrap: wrap;
-        }
-
-        .user-list {
-            max-height: 400px;
-            overflow-y: auto;
-            border: 1px solid #333;
-            border-radius: 5px;
-        }
-
-        .user-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px;
-            border-bottom: 1px solid #333;
-        }
-
-        .user-item:last-child {
-            border-bottom: none;
-        }
-
-        .user-item.deleted {
-            opacity: 0.6;
-            background: #2a0000;
-        }
-
         /* Decoy site styles */
         .decoy-header {
             background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
@@ -352,6 +207,11 @@
             color: #fff;
         }
 
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 0.8em;
+        }
+
         /* Tab system for login/register */
         .auth-tabs {
             display: flex;
@@ -441,6 +301,15 @@
             padding: 5px 10px;
             border-radius: 3px;
             border: 1px solid #ff4444;
+        }
+
+        .admin-badge {
+            background: #ffaa00;
+            color: #000;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 0.8em;
+            font-weight: bold;
         }
 
         /* Hunter-Net Interface Styles */
@@ -550,6 +419,7 @@
             display: flex;
             gap: 15px;
             flex-wrap: wrap;
+            align-items: center;
         }
 
         .signal-badge {
@@ -559,6 +429,46 @@
             border-radius: 3px;
             font-size: 0.7em;
             border: 1px solid #ff4444;
+        }
+
+        .vote-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .vote-btn {
+            background: none;
+            border: 1px solid #666;
+            color: #666;
+            padding: 5px 8px;
+            cursor: pointer;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            transition: all 0.3s;
+        }
+
+        .vote-btn:hover {
+            border-color: #ff4444;
+            color: #ff4444;
+        }
+
+        .vote-btn.active-up {
+            border-color: #44ff44;
+            color: #44ff44;
+            background: #001100;
+        }
+
+        .vote-btn.active-down {
+            border-color: #ff4444;
+            color: #ff4444;
+            background: #110000;
+        }
+
+        .vote-count {
+            color: #888;
+            font-size: 0.9em;
         }
 
         .chat-interface {
@@ -630,7 +540,7 @@
             gap: 10px;
         }
 
-        .chat-input input[type="text"] {
+        .chat-input input {
             flex: 1;
             background: #0a0000;
             border: 1px solid #330000;
@@ -692,6 +602,49 @@
         .post-body {
             color: #ccc;
             white-space: pre-wrap;
+            margin-bottom: 10px;
+        }
+
+        .admin-panel {
+            background: #2a1a00;
+            border: 2px solid #ffaa00;
+            border-radius: 5px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .admin-panel h3 {
+            color: #ffaa00;
+            margin-bottom: 15px;
+        }
+
+        .user-list {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #333;
+            border-radius: 3px;
+        }
+
+        .user-item {
+            background: #1a0000;
+            border-bottom: 1px solid #333;
+            padding: 15px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .user-info-admin {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+        }
+
+        .user-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
         }
 
         .hidden {
@@ -727,6 +680,14 @@
             text-decoration: underline;
         }
 
+        .image-preview {
+            max-width: 300px;
+            max-height: 200px;
+            margin: 10px 0;
+            border: 1px solid #333;
+            border-radius: 3px;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .decoy-content {
@@ -742,13 +703,8 @@
                 max-height: 200px;
             }
 
-            .content-with-votes {
-                flex-direction: column;
-            }
-
-            .vote-controls {
-                flex-direction: row;
-                margin-bottom: 10px;
+            .user-info-admin {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -858,11 +814,11 @@
                         <form onsubmit="handleLogin(event)">
                             <div class="form-group">
                                 <label for="handle_number">Handle:</label>
-                                <input type="text" id="handle_number" name="handle_number" placeholder="handle123" required>
+                                <input type="text" id="handle_number" name="handle_number" placeholder="Witness1" required>
                             </div>
                             <div class="form-group">
                                 <label for="login_password">Passphrase:</label>
-                                <input type="password" id="login_password" name="password" required>
+                                <input type="password" id="login_password" name="password" placeholder="password123" required>
                             </div>
                             <button type="submit" class="btn">AUTHENTICATE</button>
                         </form>
@@ -902,6 +858,11 @@
                     <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #333;">
                         <h3>Security Notice</h3>
                         <p style="color: #888; font-size: 0.9em;">This portal uses military-grade encryption. All access attempts are logged and monitored.</p>
+                        <div style="margin-top: 15px; padding: 10px; background: #001100; border: 1px solid #00ff41; border-radius: 3px;">
+                            <p style="color: #00ff41; font-size: 0.8em;"><strong>Demo Access:</strong></p>
+                            <p style="color: #888; font-size: 0.8em;">Handle: Witness1</p>
+                            <p style="color: #888; font-size: 0.8em;">Password: password123</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -921,7 +882,7 @@
                     <div class="user-stats">
                         <span>Field Cred: </span><span id="field-cred">0</span>
                     </div>
-                    <button class="btn btn-secondary" onclick="showAccountSection()">Account</button>
+                    <div id="admin-badge" class="admin-badge hidden">WITNESS</div>
                     <button class="btn btn-danger" onclick="logout()">Disconnect</button>
                 </div>
             </div>
@@ -931,12 +892,29 @@
             <div class="hunter-nav-links">
                 <a href="#" onclick="showHunterSection('boards')" class="hunter-nav-link active">Boards</a>
                 <a href="#" onclick="showHunterSection('chat')" class="hunter-nav-link">Secure Chat</a>
-                <a href="#" onclick="showHunterSection('account')" class="hunter-nav-link">Account</a>
-                <a href="#" onclick="showAdminPanel()" class="hunter-nav-link" id="admin-nav-link" style="display: none;">🔱 Admin</a>
+                <a href="#" onclick="showHunterSection('admin')" class="hunter-nav-link" id="admin-nav" style="display: none;">Admin</a>
             </div>
         </div>
 
         <div class="hunter-content">
+            <!-- Admin Section -->
+            <div id="admin-section" class="hunter-section hidden">
+                <div class="admin-panel">
+                    <h2>WITNESS COMMAND CENTER</h2>
+                    <p style="color: #ffaa00;">Full administrative access to Hunter-Net systems</p>
+                    
+                    <div style="margin: 20px 0;">
+                        <button class="btn" onclick="loadAdminUsers()">Refresh User List</button>
+                        <button class="btn btn-secondary" onclick="exportSystemData()">Export Data</button>
+                    </div>
+
+                    <h3>User Management</h3>
+                    <div id="admin-users-container" class="user-list">
+                        <div class="loading">Click Refresh to load users...</div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Boards Section -->
             <div id="boards-section" class="hunter-section">
                 <div id="board-list-view">
@@ -972,13 +950,13 @@
                         <h3>Reply to Thread</h3>
                         <form onsubmit="handleNewPost(event)">
                             <div class="form-group">
-                                <label for="post-image">Evidence Image:</label>
-                                <input type="file" id="post-image" accept="image/*">
-                                <img id="post-image-preview" class="image-preview" style="display: none;">
-                            </div>
-                            <div class="form-group">
                                 <label for="post-body">Message:</label>
                                 <textarea id="post-body" name="body_md" required></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="post-image">Image (optional):</label>
+                                <input type="file" id="post-image" accept="image/*" onchange="previewImage(event, 'post-preview')">
+                                <img id="post-preview" class="image-preview hidden">
                             </div>
                             <button type="submit" class="btn">Post Reply</button>
                         </form>
@@ -1014,13 +992,13 @@
                                 <input type="text" id="thread-tags" name="tags" placeholder="vampire, chicago, urgent">
                             </div>
                             <div class="form-group">
-                                <label for="thread-image">Evidence Image:</label>
-                                <input type="file" id="thread-image" accept="image/*">
-                                <img id="thread-image-preview" class="image-preview" style="display: none;">
-                            </div>
-                            <div class="form-group">
                                 <label for="thread-body">Message:</label>
                                 <textarea id="thread-body" name="body_md" required></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="thread-image">Image (optional):</label>
+                                <input type="file" id="thread-image" accept="image/*" onchange="previewImage(event, 'thread-preview')">
+                                <img id="thread-preview" class="image-preview hidden">
                             </div>
                             <button type="submit" class="btn">Create Thread</button>
                             <button type="button" class="btn btn-secondary" onclick="showThreadList()">Cancel</button>
@@ -1040,38 +1018,12 @@
                     <div class="chat-main">
                         <div class="chat-messages" id="chat-messages"></div>
                         <div class="chat-input">
-                            <input type="file" id="chat-image" accept="image/*" style="display: none;">
-                            <button class="btn btn-secondary" onclick="document.getElementById('chat-image').click()">📷</button>
                             <input type="text" id="chat-input" placeholder="Enter message..." onkeypress="handleChatKeypress(event)">
                             <button class="btn" onclick="sendChatMessage()">Send</button>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Account Section -->
-            <div id="account-section" class="hunter-section hidden">
-                <h2>Account Management</h2>
-                
-                <div class="account-section">
-                    <h3>Hunter Profile</h3>
-                    <div class="field-cred-display">
-                        <span>Field Credibility: </span>
-                        <span id="field-cred-value">0</span>
-                        <span>⭐</span>
-                    </div>
-                    <p style="color: #888; margin-top: 10px;">Your reputation within the Hunter community. Earned through valuable contributions and lost through poor behavior.</p>
-                </div>
-                
-                <div class="account-section danger-zone">
-                    <h3>⚠️ Danger Zone</h3>
-                    <p>Account deletion is permanent and cannot be undone. All your posts and threads will remain but be marked as deleted.</p>
-                    <button class="btn btn-danger" onclick="deleteAccount()">Delete Account</button>
-                </div>
-            </div>
-
-            <!-- Admin Section (only visible to Witness1) -->
-            <div id="admin-section" class="hunter-section hidden"></div>
         </div>
     </div>
 
@@ -1085,25 +1037,177 @@
         let currentThread = null;
         let socket = null;
         let currentChatRoom = 'global';
-        let selectedChatImage = null;
+
+        // Client storage utility
+        const hunterStorage = {
+            prefix: 'hunternet_',
+            
+            set(key, value) {
+                try {
+                    localStorage.setItem(this.prefix + key, JSON.stringify(value));
+                    return true;
+                } catch (error) {
+                    console.error('Storage error:', error);
+                    return false;
+                }
+            },
+            
+            get(key, defaultValue = null) {
+                try {
+                    const item = localStorage.getItem(this.prefix + key);
+                    return item ? JSON.parse(item) : defaultValue;
+                } catch (error) {
+                    console.error('Storage error:', error);
+                    return defaultValue;
+                }
+            },
+            
+            remove(key) {
+                try {
+                    localStorage.removeItem(this.prefix + key);
+                    return true;
+                } catch (error) {
+                    console.error('Storage error:', error);
+                    return false;
+                }
+            },
+
+            storeVote(targetType, targetId, voteData) {
+                const votes = this.get('votes', {});
+                const key = `${targetType}_${targetId}`;
+                votes[key] = voteData;
+                this.set('votes', votes);
+            },
+
+            getVote(targetType, targetId) {
+                const votes = this.get('votes', {});
+                const key = `${targetType}_${targetId}`;
+                return votes[key] || null;
+            }
+        };
 
         // API helpers
         async function apiRequest(url, options = {}) {
-            const response = await fetch(url, {
-                credentials: 'include',
-                ...options,
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...options.headers
+            try {
+                const response = await fetch(url, {
+                    credentials: 'include',
+                    ...options,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    }
+                });
+
+                if (!response.ok) {
+                    const error = await response.json().catch(() => ({ error: 'Request failed' }));
+                    throw new Error(error.error || `HTTP ${response.status}`);
                 }
-            });
 
-            if (!response.ok) {
-                const error = await response.json().catch(() => ({ error: 'Request failed' }));
-                throw new Error(error.error || 'Request failed');
+                return response.json();
+            } catch (error) {
+                console.error('API Request failed:', error);
+                throw error;
             }
+        }
 
+        // Upload helper
+        async function uploadImage(file) {
+            const formData = new FormData();
+            formData.append('image', file);
+            
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                credentials: 'include',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                throw new Error('Upload failed');
+            }
+            
             return response.json();
+        }
+
+        // Image preview
+        function previewImage(event, previewId) {
+            const file = event.target.files[0];
+            const preview = document.getElementById(previewId);
+            
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            } else {
+                preview.classList.add('hidden');
+            }
+        }
+
+        // Voting system
+        async function vote(targetType, targetId, voteType) {
+            try {
+                const data = await apiRequest('/api/vote', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        target_type: targetType,
+                        target_id: targetId,
+                        vote_type: voteType
+                    })
+                });
+                
+                // Store vote locally
+                hunterStorage.storeVote(targetType, targetId, {
+                    user_vote: voteType,
+                    upvotes: data.upvotes,
+                    downvotes: data.downvotes
+                });
+                
+                updateVoteDisplay(targetType, targetId, {
+                    user_vote: voteType,
+                    upvotes: data.upvotes,
+                    downvotes: data.downvotes
+                });
+                
+                showNotification(`Vote ${voteType === 'up' ? 'up' : 'down'} recorded`, 'success');
+                
+            } catch (error) {
+                showNotification(error.message, 'error');
+            }
+        }
+
+        function updateVoteDisplay(targetType, targetId, voteData) {
+            const voteContainer = document.getElementById(`vote-${targetType}-${targetId}`);
+            if (voteContainer) {
+                const upBtn = voteContainer.querySelector('.vote-up');
+                const downBtn = voteContainer.querySelector('.vote-down');
+                const upCount = voteContainer.querySelector('.up-count');
+                const downCount = voteContainer.querySelector('.down-count');
+                
+                // Update button states
+                upBtn.classList.toggle('active-up', voteData.user_vote === 'up');
+                downBtn.classList.toggle('active-down', voteData.user_vote === 'down');
+                
+                // Update counts
+                upCount.textContent = voteData.upvotes;
+                downCount.textContent = voteData.downvotes;
+            }
+        }
+
+        function createVoteControls(targetType, targetId, voteData = {}) {
+            return `
+                <div id="vote-${targetType}-${targetId}" class="vote-controls">
+                    <button class="vote-btn vote-up ${voteData.user_vote === 'up' ? 'active-up' : ''}" 
+                            onclick="vote('${targetType}', ${targetId}, 'up')">
+                        ▲ <span class="up-count">${voteData.upvotes || 0}</span>
+                    </button>
+                    <button class="vote-btn vote-down ${voteData.user_vote === 'down' ? 'active-down' : ''}" 
+                            onclick="vote('${targetType}', ${targetId}, 'down')">
+                        ▼ <span class="down-count">${voteData.downvotes || 0}</span>
+                    </button>
+                </div>
+            `;
         }
 
         // Notification system
@@ -1120,141 +1224,6 @@
                     notification.remove();
                 }
             }, 5000);
-        }
-
-        // Image upload functionality
-        async function uploadImage(file) {
-            const formData = new FormData();
-            formData.append('image', file);
-            
-            try {
-                showNotification('Uploading image...', 'info');
-                const response = await fetch('/api/upload', {
-                    method: 'POST',
-                    credentials: 'include',
-                    body: formData
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Upload failed');
-                }
-                
-                const data = await response.json();
-                showNotification('Image uploaded successfully', 'success');
-                return data.image_path;
-                
-            } catch (error) {
-                showNotification('Failed to upload image: ' + error.message, 'error');
-                return null;
-            }
-        }
-
-        // Handle image upload in forms
-        function handleImageUpload(inputId, previewId) {
-            const input = document.getElementById(inputId);
-            const preview = document.getElementById(previewId);
-            
-            if (!input) return;
-            
-            input.addEventListener('change', async (event) => {
-                const file = event.target.files[0];
-                if (file) {
-                    // Show preview
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        if (preview) {
-                            preview.src = e.target.result;
-                            preview.style.display = 'block';
-                        }
-                    };
-                    reader.readAsDataURL(file);
-                    
-                    // Upload image
-                    const imagePath = await uploadImage(file);
-                    if (imagePath) {
-                        input.dataset.imagePath = imagePath;
-                    }
-                }
-            });
-        }
-
-        // Voting functions
-        async function vote(targetType, targetId, voteType) {
-            try {
-                const response = await apiRequest('/api/vote', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        target_type: targetType,
-                        target_id: targetId,
-                        vote_type: voteType
-                    })
-                });
-                
-                updateVoteDisplay(targetType, targetId, response.upvotes, response.downvotes, voteType);
-                
-            } catch (error) {
-                showNotification('Vote failed: ' + error.message, 'error');
-            }
-        }
-
-        function updateVoteDisplay(targetType, targetId, upvotes, downvotes, userVote) {
-            const container = document.querySelector(`[data-vote-target="${targetType}-${targetId}"]`);
-            if (container) {
-                const upBtn = container.querySelector('.vote-btn.upvote');
-                const downBtn = container.querySelector('.vote-btn.downvote');
-                const upCount = container.querySelector('.upvote-count');
-                const downCount = container.querySelector('.downvote-count');
-                
-                if (upCount) upCount.textContent = upvotes;
-                if (downCount) downCount.textContent = downvotes;
-                
-                if (upBtn) {
-                    upBtn.classList.toggle('active', userVote === 'up');
-                }
-                if (downBtn) {
-                    downBtn.classList.toggle('active', userVote === 'down');
-                }
-            }
-        }
-
-        // Load vote status for content
-        async function loadVoteStatus(targetType, targetId) {
-            try {
-                const response = await apiRequest(`/api/votes/${targetType}/${targetId}`);
-                updateVoteDisplay(targetType, targetId, response.upvotes, response.downvotes, response.user_vote);
-            } catch (error) {
-                console.error('Failed to load vote status:', error);
-            }
-        }
-
-        // Create voting controls HTML
-        function createVoteControls(targetType, targetId) {
-            return `
-                <div class="vote-controls" data-vote-target="${targetType}-${targetId}">
-                    <button class="vote-btn upvote" onclick="vote('${targetType}', ${targetId}, 'up')">▲</button>
-                    <span class="vote-count upvote-count">0</span>
-                    <span class="vote-count downvote-count">0</span>
-                    <button class="vote-btn downvote" onclick="vote('${targetType}', ${targetId}, 'down')">▼</button>
-                </div>
-            `;
-        }
-
-        // Image modal for viewing
-        function openImageModal(imagePath) {
-            const modal = document.createElement('div');
-            modal.style.cssText = `
-                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                background: rgba(0,0,0,0.9); display: flex; align-items: center;
-                justify-content: center; z-index: 2000; cursor: pointer;
-            `;
-            
-            const img = document.createElement('img');
-            img.src = imagePath;
-            img.style.cssText = 'max-width: 90%; max-height: 90%; border-radius: 5px;';
-            
-            modal.appendChild(img);
-            modal.onclick = () => modal.remove();
-            document.body.appendChild(modal);
         }
 
         // Tab switching for decoy site
@@ -1353,35 +1322,6 @@
             showNotification('Disconnected from Hunter-Net.', 'info');
         }
 
-        // Account deletion
-        async function deleteAccount() {
-            const password = prompt('Enter your password to confirm account deletion:');
-            if (!password) return;
-            
-            const reason = prompt('Reason for deletion (optional):');
-            
-            if (!confirm('Are you absolutely sure you want to delete your account? This cannot be undone.')) {
-                return;
-            }
-            
-            try {
-                showNotification('Deleting account...', 'info');
-                
-                await apiRequest('/api/account', {
-                    method: 'DELETE',
-                    body: JSON.stringify({ password, reason })
-                });
-                
-                showNotification('Account deleted successfully. Goodbye, Hunter.', 'success');
-                setTimeout(() => {
-                    window.location.reload();
-                }, 2000);
-                
-            } catch (error) {
-                showNotification('Failed to delete account: ' + error.message, 'error');
-            }
-        }
-
         // Hunter-Net initialization
         function initializeHunterNet() {
             document.getElementById('decoy-site').style.display = 'none';
@@ -1389,11 +1329,11 @@
             
             document.getElementById('user-display').textContent = currentUser.handle_number;
             document.getElementById('field-cred').textContent = currentUser.field_cred || 0;
-            document.getElementById('field-cred-value').textContent = currentUser.field_cred || 0;
 
-            // Show admin nav if Witness1
+            // Show admin features for Witness1
             if (currentUser.is_admin && currentUser.handle_number === 'Witness1') {
-                document.getElementById('admin-nav-link').style.display = 'block';
+                document.getElementById('admin-nav').style.display = 'block';
+                document.getElementById('admin-badge').classList.remove('hidden');
             }
 
             // Initialize Socket.IO
@@ -1411,19 +1351,12 @@
                 displayChatMessage(data);
             });
 
+            socket.on('disconnect', () => {
+                console.log('Disconnected from chat server');
+            });
+
             loadBoards();
             loadChatRooms();
-
-            // Set up image upload handlers
-            setTimeout(() => {
-                handleImageUpload('thread-image', 'thread-image-preview');
-                handleImageUpload('post-image', 'post-image-preview');
-                
-                const chatImageInput = document.getElementById('chat-image');
-                if (chatImageInput) {
-                    chatImageInput.addEventListener('change', handleChatImageUpload);
-                }
-            }, 100);
         }
 
         // Hunter-Net navigation
@@ -1444,85 +1377,107 @@
             }
         }
 
-        function showAccountSection() {
-            showHunterSection('account');
-        }
-
-        function showAdminPanel() {
-            if (currentUser.is_admin && currentUser.handle_number === 'Witness1') {
-                showHunterSection('admin');
-                loadAdminPanel();
-            }
-        }
-
-        // Enhanced thread creation with image support
-        async function handleNewThread(event) {
-            event.preventDefault();
-            
-            const formData = new FormData(event.target);
-            const imageInput = document.getElementById('thread-image');
-            
+        // Admin functions
+        async function loadAdminUsers() {
             try {
-                showNotification('Creating thread...', 'info');
-                
-                const requestData = {
-                    title: formData.get('title'),
-                    body_md: formData.get('body_md'),
-                    signal: formData.get('signal'),
-                    tags: formData.get('tags')
-                };
-                
-                if (imageInput.dataset.imagePath) {
-                    requestData.image_path = imageInput.dataset.imagePath;
-                }
-                
-                await apiRequest(`/api/boards/${currentBoard.key}/threads`, {
-                    method: 'POST',
-                    body: JSON.stringify(requestData)
-                });
-                
-                showNotification('Thread created successfully', 'success');
-                event.target.reset();
-                document.getElementById('thread-image-preview').style.display = 'none';
-                showThreadList();
-                loadThreads(currentBoard.key, currentBoard.name);
-                
+                const data = await apiRequest('/api/admin/users');
+                displayAdminUsers(data.users);
             } catch (error) {
-                showNotification(error.message, 'error');
+                document.getElementById('admin-users-container').innerHTML = `
+                    <div class="error">Failed to load users: ${error.message}</div>
+                `;
             }
         }
 
-        // Enhanced post creation with image support
-        async function handleNewPost(event) {
-            event.preventDefault();
+        function displayAdminUsers(users) {
+            const container = document.getElementById('admin-users-container');
+            container.innerHTML = users.map(user => `
+                <div class="user-item">
+                    <div class="user-info-admin">
+                        <div>
+                            <strong style="color: #ff4444;">${user.handle_number}</strong>
+                            ${user.active === 'deleted' ? '<span style="color: #666;"> [DELETED]</span>' : ''}
+                            <br>
+                            <small style="color: #888;">${user.creed || 'No creed'} | Joined ${new Date(user.created_at).toLocaleDateString()}</small>
+                        </div>
+                        <div>
+                            <strong>Field Cred:</strong> ${user.field_cred}<br>
+                            <small>Threads: ${user.thread_count} | Posts: ${user.post_count}</small>
+                        </div>
+                        <div>
+                            ${user.email ? `<small style="color: #888;">${user.email}</small>` : ''}
+                            ${user.deletion_reason ? `<br><small style="color: #ff4444;">Deleted: ${user.deletion_reason}</small>` : ''}
+                        </div>
+                    </div>
+                    <div class="user-actions">
+                        ${user.active !== 'deleted' ? `
+                            <button class="btn btn-small" onclick="adjustFieldCred(${user.id})">Adjust Cred</button>
+                            <button class="btn btn-danger btn-small" onclick="deleteUser(${user.id})">Delete</button>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function adjustFieldCred(userId) {
+            const newCred = prompt('Enter new field cred value:');
+            const reason = prompt('Reason for adjustment:');
             
-            const formData = new FormData(event.target);
-            const imageInput = document.getElementById('post-image');
-            
-            try {
-                showNotification('Posting reply...', 'info');
-                
-                const requestData = {
-                    body_md: formData.get('body_md')
-                };
-                
-                if (imageInput.dataset.imagePath) {
-                    requestData.image_path = imageInput.dataset.imagePath;
+            if (newCred !== null && !isNaN(newCred)) {
+                try {
+                    await apiRequest(`/api/admin/users/${userId}/field-cred`, {
+                        method: 'PATCH',
+                        body: JSON.stringify({
+                            field_cred: parseInt(newCred),
+                            reason: reason || 'Admin adjustment'
+                        })
+                    });
+                    
+                    showNotification('Field cred updated successfully', 'success');
+                    loadAdminUsers();
+                    
+                } catch (error) {
+                    showNotification(error.message, 'error');
                 }
-                
-                await apiRequest(`/api/threads/${currentThread.id}/posts`, {
-                    method: 'POST',
-                    body: JSON.stringify(requestData)
-                });
-                
-                showNotification('Reply posted successfully', 'success');
-                event.target.reset();
-                document.getElementById('post-image-preview').style.display = 'none';
-                loadThread(currentThread.id, currentThread.title);
-                
-            } catch (error) {
-                showNotification(error.message, 'error');
             }
+        }
+
+        async function deleteUser(userId) {
+            const reason = prompt('Reason for deletion:');
+            
+            if (reason && confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+                try {
+                    await apiRequest(`/api/admin/users/${userId}`, {
+                        method: 'DELETE',
+                        body: JSON.stringify({ reason })
+                    });
+                    
+                    showNotification('User deleted successfully', 'success');
+                    loadAdminUsers();
+                    
+                } catch (error) {
+                    showNotification(error.message, 'error');
+                }
+            }
+        }
+
+        function exportSystemData() {
+            const data = {
+                storage: hunterStorage.get(''),
+                timestamp: new Date().toISOString(),
+                user: currentUser.handle_number
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `hunternet-export-${Date.now()}.json`;
+            a.click();
+            
+            URL.revokeObjectURL(url);
+            showNotification('System data exported', 'success');
         }
 
         // Board functions
@@ -1565,31 +1520,32 @@
 
         function displayThreads(threads) {
             const container = document.getElementById('threads-container');
-            container.innerHTML = threads.map(thread => `
-                <div class="thread-item ${thread.sticky ? 'sticky' : ''} ${thread.locked ? 'locked' : ''}" 
-                     onclick="loadThread(${thread.id}, '${thread.title}')">
-                    <div class="content-with-votes">
-                        ${createVoteControls('thread', thread.id)}
-                        <div class="content-body">
-                            <div class="thread-title">
-                                ${thread.sticky ? '📌 ' : ''}
-                                ${thread.locked ? '🔒 ' : ''}
-                                ${thread.title}
-                            </div>
-                            <div class="thread-meta">
-                                <span>by ${thread.author}</span>
-                                <span>${new Date(thread.created_at).toLocaleDateString()}</span>
-                                <span>${thread.post_count} replies</span>
-                                ${thread.signal_type ? `<span class="signal-badge">${thread.signal_type}</span>` : ''}
-                                ${thread.tags ? `<span>Tags: ${thread.tags}</span>` : ''}
-                            </div>
+            container.innerHTML = threads.map(thread => {
+                const voteData = hunterStorage.getVote('thread', thread.id) || {
+                    upvotes: thread.upvotes,
+                    downvotes: thread.downvotes,
+                    user_vote: null
+                };
+                
+                return `
+                    <div class="thread-item ${thread.sticky ? 'sticky' : ''} ${thread.locked ? 'locked' : ''}" 
+                         onclick="loadThread(${thread.id}, '${thread.title}')">
+                        <div class="thread-title">
+                            ${thread.sticky ? '📌 ' : ''}
+                            ${thread.locked ? '🔒 ' : ''}
+                            ${thread.title}
                         </div>
+                        <div class="thread-meta">
+                            <span>by ${thread.author}</span>
+                            <span>${new Date(thread.created_at).toLocaleDateString()}</span>
+                            <span>${thread.post_count} replies</span>
+                            ${thread.signal_type ? `<span class="signal-badge">${thread.signal_type}</span>` : ''}
+                            ${thread.tags ? `<span>Tags: ${thread.tags}</span>` : ''}
+                        </div>
+                        ${createVoteControls('thread', thread.id, voteData)}
                     </div>
-                </div>
-            `).join('');
-            
-            // Load vote status for all threads
-            threads.forEach(thread => loadVoteStatus('thread', thread.id));
+                `;
+            }).join('');
         }
 
         async function loadThread(threadId, threadTitle) {
@@ -1607,61 +1563,53 @@
             }
         }
 
-        // Enhanced thread display with voting and images
         function displayThread(thread, posts) {
+            const threadVoteData = hunterStorage.getVote('thread', thread.id) || {
+                upvotes: thread.upvotes,
+                downvotes: thread.downvotes,
+                user_vote: null
+            };
+
             const threadContent = document.getElementById('thread-content');
-            
-            const imageHtml = thread.image_path ? 
-                `<img src="${thread.image_path}" alt="Thread image" class="uploaded-image" onclick="openImageModal('${thread.image_path}')">` : '';
-            
             threadContent.innerHTML = `
                 <div class="thread-content">
-                    <div class="content-with-votes">
-                        ${createVoteControls('thread', thread.id)}
-                        <div class="content-body">
-                            <h2>${thread.title}</h2>
-                            <div class="thread-meta">
-                                <span>by ${thread.author}</span>
-                                <span>${new Date(thread.created_at).toLocaleDateString()}</span>
-                                ${thread.signal_type ? `<span class="signal-badge">${thread.signal_type}</span>` : ''}
-                                ${thread.tags ? `<span>Tags: ${thread.tags}</span>` : ''}
-                                ${currentUser.is_admin ? `
-                                    <button class="btn btn-secondary" onclick="toggleSticky(${thread.id}, ${!thread.sticky})">${thread.sticky ? 'Unstick' : 'Stick'}</button>
-                                    <button class="btn btn-secondary" onclick="toggleLocked(${thread.id}, ${!thread.locked})">${thread.locked ? 'Unlock' : 'Lock'}</button>
-                                ` : ''}
-                            </div>
-                            ${imageHtml}
-                            <div class="post-body">${thread.body_md}</div>
-                        </div>
+                    <h2>${thread.title}</h2>
+                    <div class="thread-meta">
+                        <span>by ${thread.author}</span>
+                        <span>${new Date(thread.created_at).toLocaleDateString()}</span>
+                        ${thread.signal_type ? `<span class="signal-badge">${thread.signal_type}</span>` : ''}
+                        ${thread.tags ? `<span>Tags: ${thread.tags}</span>` : ''}
+                        ${currentUser.is_admin ? `
+                            <button class="btn btn-secondary btn-small" onclick="toggleSticky(${thread.id}, ${!thread.sticky})">${thread.sticky ? 'Unstick' : 'Stick'}</button>
+                            <button class="btn btn-secondary btn-small" onclick="toggleLocked(${thread.id}, ${!thread.locked})">${thread.locked ? 'Unlock' : 'Lock'}</button>
+                        ` : ''}
                     </div>
+                    <div class="post-body">${thread.body_md}</div>
+                    ${thread.image_path ? `<img src="${thread.image_path}" class="image-preview">` : ''}
+                    ${createVoteControls('thread', thread.id, threadVoteData)}
                 </div>
             `;
 
             const postsContainer = document.getElementById('posts-container');
             postsContainer.innerHTML = posts.map(post => {
-                const postImageHtml = post.image_path ? 
-                    `<img src="${post.image_path}" alt="Post image" class="uploaded-image" onclick="openImageModal('${post.image_path}')">` : '';
+                const postVoteData = hunterStorage.getVote('post', post.id) || {
+                    upvotes: post.upvotes,
+                    downvotes: post.downvotes,
+                    user_vote: null
+                };
                 
                 return `
                     <div class="post-item">
-                        <div class="content-with-votes">
-                            ${createVoteControls('post', post.id)}
-                            <div class="content-body">
-                                <div class="post-header">
-                                    <span class="post-author">${post.author}</span>
-                                    <span class="post-time">${new Date(post.created_at).toLocaleString()}</span>
-                                </div>
-                                ${postImageHtml}
-                                <div class="post-body">${post.body_md}</div>
-                            </div>
+                        <div class="post-header">
+                            <span class="post-author">${post.author}</span>
+                            <span class="post-time">${new Date(post.created_at).toLocaleString()}</span>
                         </div>
+                        <div class="post-body">${post.body_md}</div>
+                        ${post.image_path ? `<img src="${post.image_path}" class="image-preview">` : ''}
+                        ${createVoteControls('post', post.id, postVoteData)}
                     </div>
                 `;
             }).join('');
-            
-            // Load vote status for thread and all posts
-            loadVoteStatus('thread', thread.id);
-            posts.forEach(post => loadVoteStatus('post', post.id));
         }
 
         function showBoardList() {
@@ -1688,6 +1636,76 @@
         function showNewThreadForm() {
             document.getElementById('thread-list-view').classList.add('hidden');
             document.getElementById('new-thread-form').classList.remove('hidden');
+        }
+
+        async function handleNewThread(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(event.target);
+            
+            try {
+                showNotification('Creating thread...', 'info');
+                
+                let imagePath = null;
+                const imageFile = document.getElementById('thread-image').files[0];
+                if (imageFile) {
+                    const uploadData = await uploadImage(imageFile);
+                    imagePath = uploadData.image_path;
+                }
+                
+                await apiRequest(`/api/boards/${currentBoard.key}/threads`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        title: formData.get('title'),
+                        body_md: formData.get('body_md'),
+                        signal: formData.get('signal'),
+                        tags: formData.get('tags'),
+                        image_path: imagePath
+                    })
+                });
+                
+                showNotification('Thread created successfully', 'success');
+                event.target.reset();
+                document.getElementById('thread-preview').classList.add('hidden');
+                showThreadList();
+                loadThreads(currentBoard.key, currentBoard.name);
+                
+            } catch (error) {
+                showNotification(error.message, 'error');
+            }
+        }
+
+        async function handleNewPost(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(event.target);
+            
+            try {
+                showNotification('Posting reply...', 'info');
+                
+                let imagePath = null;
+                const imageFile = document.getElementById('post-image').files[0];
+                if (imageFile) {
+                    const uploadData = await uploadImage(imageFile);
+                    imagePath = uploadData.image_path;
+                }
+                
+                await apiRequest(`/api/threads/${currentThread.id}/posts`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        body_md: formData.get('body_md'),
+                        image_path: imagePath
+                    })
+                });
+                
+                showNotification('Reply posted successfully', 'success');
+                event.target.reset();
+                document.getElementById('post-preview').classList.add('hidden');
+                loadThread(currentThread.id, currentThread.title);
+                
+            } catch (error) {
+                showNotification(error.message, 'error');
+            }
         }
 
         async function toggleSticky(threadId, sticky) {
@@ -1731,7 +1749,7 @@
         function displayChatRooms(rooms) {
             const container = document.getElementById('chat-rooms-list');
             container.innerHTML = rooms.map(room => `
-                <div class="chat-room ${room.key === currentChatRoom ? 'active' : ''}" 
+active' : ''}" 
                      onclick="joinChatRoom('${room.key}')">
                     ${room.title}
                 </div>
@@ -1755,30 +1773,16 @@
             try {
                 const data = await apiRequest(`/api/chat/rooms/${roomKey}/messages?limit=50`);
                 const container = document.getElementById('chat-messages');
-                container.innerHTML = data.messages.map(message => {
-                    const imageHtml = message.image_path ? 
-                        `<img src="${message.image_path}" alt="Chat image" class="uploaded-image" onclick="openImageModal('${message.image_path}')">` : '';
-                    
-                    return `
-                        <div class="chat-message">
-                            <div class="content-with-votes">
-                                ${createVoteControls('message', message.id)}
-                                <div class="content-body">
-                                    <span class="chat-author">${message.author}:</span>
-                                    ${imageHtml}
-                                    ${message.body}
-                                    <span class="chat-time">${new Date(message.created_at).toLocaleTimeString()}</span>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
+                container.innerHTML = data.messages.map(message => `
+                    <div class="chat-message">
+                        <span class="chat-author">${message.author}:</span>
+                        ${message.body}
+                        <span class="chat-time">${new Date(message.created_at).toLocaleTimeString()}</span>
+                        ${message.image_path ? `<br><img src="${message.image_path}" class="image-preview">` : ''}
+                    </div>
+                `).join('');
                 
-                // Load vote status for messages
-                data.messages.forEach(message => {
-                    if (message.id) loadVoteStatus('message', message.id);
-                });
-                
+                // Scroll to bottom
                 container.scrollTop = container.scrollHeight;
             } catch (error) {
                 console.error('Failed to load chat messages:', error);
@@ -1789,164 +1793,33 @@
             const container = document.getElementById('chat-messages');
             const messageElement = document.createElement('div');
             messageElement.className = 'chat-message';
-            
-            const imageHtml = message.image_path ? 
-                `<img src="${message.image_path}" alt="Chat image" class="uploaded-image" onclick="openImageModal('${message.image_path}')">` : '';
-            
             messageElement.innerHTML = `
-                <div class="content-with-votes">
-                    ${createVoteControls('message', message.id)}
-                    <div class="content-body">
-                        <span class="chat-author">${message.author}:</span>
-                        ${imageHtml}
-                        ${message.body}
-                        <span class="chat-time">${new Date(message.created_at).toLocaleTimeString()}</span>
-                    </div>
-                </div>
+                <span class="chat-author">${message.author}:</span>
+                ${message.body}
+                <span class="chat-time">${new Date(message.created_at).toLocaleTimeString()}</span>
+                ${message.image_path ? `<br><img src="${message.image_path}" class="image-preview">` : ''}
             `;
             
             container.appendChild(messageElement);
             container.scrollTop = container.scrollHeight;
-            
-            if (message.id) {
-                loadVoteStatus('message', message.id);
-            }
         }
 
-        // Enhanced chat with image support
         function sendChatMessage() {
             const input = document.getElementById('chat-input');
             const message = input.value.trim();
             
-            if ((message || selectedChatImage) && socket) {
+            if (message && socket) {
                 socket.emit('message', {
                     roomKey: currentChatRoom,
-                    body: message,
-                    image_path: selectedChatImage
+                    body: message
                 });
                 input.value = '';
-                selectedChatImage = null;
-                
-                const preview = document.getElementById('chat-image-preview');
-                if (preview) {
-                    preview.style.display = 'none';
-                }
             }
         }
 
         function handleChatKeypress(event) {
             if (event.key === 'Enter') {
                 sendChatMessage();
-            }
-        }
-
-        // Handle chat image upload
-        function handleChatImageUpload(event) {
-            const file = event.target.files[0];
-            if (file) {
-                uploadImage(file).then(imagePath => {
-                    if (imagePath) {
-                        selectedChatImage = imagePath;
-                        
-                        let preview = document.getElementById('chat-image-preview');
-                        if (!preview) {
-                            preview = document.createElement('img');
-                            preview.id = 'chat-image-preview';
-                            preview.className = 'image-preview';
-                            document.querySelector('.chat-input').appendChild(preview);
-                        }
-                        
-                        preview.src = imagePath;
-                        preview.style.display = 'block';
-                    }
-                });
-            }
-        }
-
-        // Admin functions (Witness1 only)
-        async function loadAdminPanel() {
-            if (!currentUser.is_admin || currentUser.handle_number !== 'Witness1') {
-                return;
-            }
-            
-            try {
-                const response = await apiRequest('/api/admin/users');
-                displayUserList(response.users);
-            } catch (error) {
-                showNotification('Failed to load admin panel: ' + error.message, 'error');
-            }
-        }
-
-        function displayUserList(users) {
-            const adminSection = document.getElementById('admin-section');
-            if (!adminSection) return;
-            
-            adminSection.innerHTML = `
-                <div class="admin-panel">
-                    <h2>🔱 WITNESS1 ADMIN CONTROL</h2>
-                    <div class="user-list">
-                        ${users.map(user => `
-                            <div class="user-item ${user.deleted_at ? 'deleted' : ''}">
-                                <div>
-                                    <strong>${user.handle_number}</strong> 
-                                    (Field Cred: ${user.field_cred})
-                                    <br>
-                                    <small>
-                                        Threads: ${user.thread_count} | Posts: ${user.post_count} | 
-                                        Joined: ${new Date(user.created_at).toLocaleDateString()}
-                                        ${user.deleted_at ? ` | DELETED: ${user.deletion_reason}` : ''}
-                                    </small>
-                                </div>
-                                <div class="admin-controls">
-                                    <input type="number" id="cred-${user.id}" value="${user.field_cred}" style="width: 60px;">
-                                    <button class="btn btn-secondary" onclick="updateUserFieldCred(${user.id})">Set Cred</button>
-                                    ${!user.deleted_at ? `<button class="btn btn-danger" onclick="adminDeleteUser(${user.id})">Delete</button>` : ''}
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-        }
-
-        async function updateUserFieldCred(userId) {
-            const newCred = document.getElementById(`cred-${userId}`).value;
-            const reason = prompt('Reason for field cred change:');
-            
-            try {
-                await apiRequest(`/api/admin/users/${userId}/field-cred`, {
-                    method: 'PATCH',
-                    body: JSON.stringify({ 
-                        field_cred: parseInt(newCred), 
-                        reason 
-                    })
-                });
-                
-                showNotification('Field cred updated successfully', 'success');
-                loadAdminPanel();
-                
-            } catch (error) {
-                showNotification('Failed to update field cred: ' + error.message, 'error');
-            }
-        }
-
-        async function adminDeleteUser(userId) {
-            const reason = prompt('Reason for deletion:');
-            if (!reason) return;
-            
-            if (!confirm('Are you sure you want to delete this user?')) return;
-            
-            try {
-                await apiRequest(`/api/admin/users/${userId}`, {
-                    method: 'DELETE',
-                    body: JSON.stringify({ reason })
-                });
-                
-                showNotification('User deleted successfully', 'success');
-                loadAdminPanel();
-                
-            } catch (error) {
-                showNotification('Failed to delete user: ' + error.message, 'error');
             }
         }
 
@@ -1961,10 +1834,14 @@
                 initializeHunterNet();
                 showNotification('Reconnected to Hunter-Net', 'success');
             } catch (error) {
-                // Not logged in, show demo hint
+                // Not logged in, show demo hints
                 setTimeout(() => {
-                    showNotification('Demo: Create an account or try "Witness1" / "AdminHunter2024!"', 'info');
+                    showNotification('Demo: Try "Witness1" / "password123" for admin access', 'info');
                 }, 2000);
+                
+                setTimeout(() => {
+                    showNotification('Or create a new hunter account to begin', 'info');
+                }, 4000);
             }
         });
     </script>
