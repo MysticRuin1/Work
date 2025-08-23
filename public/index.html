@@ -68,6 +68,151 @@
             to { transform: translateX(0); opacity: 1; }
         }
 
+        /* Voting system styles */
+        .vote-controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-right: 15px;
+            min-width: 40px;
+        }
+
+        .vote-btn {
+            background: none;
+            border: 1px solid #333;
+            color: #666;
+            padding: 5px 8px;
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 3px;
+            margin: 2px 0;
+            transition: all 0.3s;
+        }
+
+        .vote-btn:hover {
+            background: #333;
+            color: #fff;
+        }
+
+        .vote-btn.active.upvote {
+            background: #228B22;
+            color: #fff;
+            border-color: #228B22;
+        }
+
+        .vote-btn.active.downvote {
+            background: #DC143C;
+            color: #fff;
+            border-color: #DC143C;
+        }
+
+        .vote-count {
+            color: #ff4444;
+            font-weight: bold;
+            font-size: 14px;
+            margin: 2px 0;
+        }
+
+        /* Content with voting layout */
+        .content-with-votes {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .content-body {
+            flex: 1;
+        }
+
+        /* Image upload styles */
+        .image-upload {
+            margin: 10px 0;
+        }
+
+        .image-preview {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+
+        .uploaded-image {
+            max-width: 100%;
+            max-height: 400px;
+            border-radius: 5px;
+            margin: 10px 0;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+
+        .uploaded-image:hover {
+            transform: scale(1.05);
+        }
+
+        /* Account management styles */
+        .account-section {
+            background: #1a0000;
+            border: 1px solid #330000;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+
+        .danger-zone {
+            border-color: #ff4444;
+            background: #2a0000;
+        }
+
+        .field-cred-display {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: #330000;
+            padding: 5px 10px;
+            border-radius: 3px;
+            border: 1px solid #ff4444;
+        }
+
+        /* Admin styles */
+        .admin-panel {
+            background: #1a1a00;
+            border: 2px solid #ffaa00;
+            border-radius: 5px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .admin-controls {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+            flex-wrap: wrap;
+        }
+
+        .user-list {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #333;
+            border-radius: 5px;
+        }
+
+        .user-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #333;
+        }
+
+        .user-item:last-child {
+            border-bottom: none;
+        }
+
+        .user-item.deleted {
+            opacity: 0.6;
+            background: #2a0000;
+        }
+
         /* Decoy site styles */
         .decoy-header {
             background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
@@ -485,7 +630,7 @@
             gap: 10px;
         }
 
-        .chat-input input {
+        .chat-input input[type="text"] {
             flex: 1;
             background: #0a0000;
             border: 1px solid #330000;
@@ -595,6 +740,15 @@
             
             .chat-rooms {
                 max-height: 200px;
+            }
+
+            .content-with-votes {
+                flex-direction: column;
+            }
+
+            .vote-controls {
+                flex-direction: row;
+                margin-bottom: 10px;
             }
         }
     </style>
@@ -767,6 +921,7 @@
                     <div class="user-stats">
                         <span>Field Cred: </span><span id="field-cred">0</span>
                     </div>
+                    <button class="btn btn-secondary" onclick="showAccountSection()">Account</button>
                     <button class="btn btn-danger" onclick="logout()">Disconnect</button>
                 </div>
             </div>
@@ -776,6 +931,8 @@
             <div class="hunter-nav-links">
                 <a href="#" onclick="showHunterSection('boards')" class="hunter-nav-link active">Boards</a>
                 <a href="#" onclick="showHunterSection('chat')" class="hunter-nav-link">Secure Chat</a>
+                <a href="#" onclick="showHunterSection('account')" class="hunter-nav-link">Account</a>
+                <a href="#" onclick="showAdminPanel()" class="hunter-nav-link" id="admin-nav-link" style="display: none;">🔱 Admin</a>
             </div>
         </div>
 
@@ -815,6 +972,11 @@
                         <h3>Reply to Thread</h3>
                         <form onsubmit="handleNewPost(event)">
                             <div class="form-group">
+                                <label for="post-image">Evidence Image:</label>
+                                <input type="file" id="post-image" accept="image/*">
+                                <img id="post-image-preview" class="image-preview" style="display: none;">
+                            </div>
+                            <div class="form-group">
                                 <label for="post-body">Message:</label>
                                 <textarea id="post-body" name="body_md" required></textarea>
                             </div>
@@ -852,6 +1014,11 @@
                                 <input type="text" id="thread-tags" name="tags" placeholder="vampire, chicago, urgent">
                             </div>
                             <div class="form-group">
+                                <label for="thread-image">Evidence Image:</label>
+                                <input type="file" id="thread-image" accept="image/*">
+                                <img id="thread-image-preview" class="image-preview" style="display: none;">
+                            </div>
+                            <div class="form-group">
                                 <label for="thread-body">Message:</label>
                                 <textarea id="thread-body" name="body_md" required></textarea>
                             </div>
@@ -873,12 +1040,38 @@
                     <div class="chat-main">
                         <div class="chat-messages" id="chat-messages"></div>
                         <div class="chat-input">
+                            <input type="file" id="chat-image" accept="image/*" style="display: none;">
+                            <button class="btn btn-secondary" onclick="document.getElementById('chat-image').click()">📷</button>
                             <input type="text" id="chat-input" placeholder="Enter message..." onkeypress="handleChatKeypress(event)">
                             <button class="btn" onclick="sendChatMessage()">Send</button>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <!-- Account Section -->
+            <div id="account-section" class="hunter-section hidden">
+                <h2>Account Management</h2>
+                
+                <div class="account-section">
+                    <h3>Hunter Profile</h3>
+                    <div class="field-cred-display">
+                        <span>Field Credibility: </span>
+                        <span id="field-cred-value">0</span>
+                        <span>⭐</span>
+                    </div>
+                    <p style="color: #888; margin-top: 10px;">Your reputation within the Hunter community. Earned through valuable contributions and lost through poor behavior.</p>
+                </div>
+                
+                <div class="account-section danger-zone">
+                    <h3>⚠️ Danger Zone</h3>
+                    <p>Account deletion is permanent and cannot be undone. All your posts and threads will remain but be marked as deleted.</p>
+                    <button class="btn btn-danger" onclick="deleteAccount()">Delete Account</button>
+                </div>
+            </div>
+
+            <!-- Admin Section (only visible to Witness1) -->
+            <div id="admin-section" class="hunter-section hidden"></div>
         </div>
     </div>
 
@@ -892,6 +1085,7 @@
         let currentThread = null;
         let socket = null;
         let currentChatRoom = 'global';
+        let selectedChatImage = null;
 
         // API helpers
         async function apiRequest(url, options = {}) {
@@ -926,6 +1120,141 @@
                     notification.remove();
                 }
             }, 5000);
+        }
+
+        // Image upload functionality
+        async function uploadImage(file) {
+            const formData = new FormData();
+            formData.append('image', file);
+            
+            try {
+                showNotification('Uploading image...', 'info');
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    credentials: 'include',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Upload failed');
+                }
+                
+                const data = await response.json();
+                showNotification('Image uploaded successfully', 'success');
+                return data.image_path;
+                
+            } catch (error) {
+                showNotification('Failed to upload image: ' + error.message, 'error');
+                return null;
+            }
+        }
+
+        // Handle image upload in forms
+        function handleImageUpload(inputId, previewId) {
+            const input = document.getElementById(inputId);
+            const preview = document.getElementById(previewId);
+            
+            if (!input) return;
+            
+            input.addEventListener('change', async (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    // Show preview
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        if (preview) {
+                            preview.src = e.target.result;
+                            preview.style.display = 'block';
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                    
+                    // Upload image
+                    const imagePath = await uploadImage(file);
+                    if (imagePath) {
+                        input.dataset.imagePath = imagePath;
+                    }
+                }
+            });
+        }
+
+        // Voting functions
+        async function vote(targetType, targetId, voteType) {
+            try {
+                const response = await apiRequest('/api/vote', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        target_type: targetType,
+                        target_id: targetId,
+                        vote_type: voteType
+                    })
+                });
+                
+                updateVoteDisplay(targetType, targetId, response.upvotes, response.downvotes, voteType);
+                
+            } catch (error) {
+                showNotification('Vote failed: ' + error.message, 'error');
+            }
+        }
+
+        function updateVoteDisplay(targetType, targetId, upvotes, downvotes, userVote) {
+            const container = document.querySelector(`[data-vote-target="${targetType}-${targetId}"]`);
+            if (container) {
+                const upBtn = container.querySelector('.vote-btn.upvote');
+                const downBtn = container.querySelector('.vote-btn.downvote');
+                const upCount = container.querySelector('.upvote-count');
+                const downCount = container.querySelector('.downvote-count');
+                
+                if (upCount) upCount.textContent = upvotes;
+                if (downCount) downCount.textContent = downvotes;
+                
+                if (upBtn) {
+                    upBtn.classList.toggle('active', userVote === 'up');
+                }
+                if (downBtn) {
+                    downBtn.classList.toggle('active', userVote === 'down');
+                }
+            }
+        }
+
+        // Load vote status for content
+        async function loadVoteStatus(targetType, targetId) {
+            try {
+                const response = await apiRequest(`/api/votes/${targetType}/${targetId}`);
+                updateVoteDisplay(targetType, targetId, response.upvotes, response.downvotes, response.user_vote);
+            } catch (error) {
+                console.error('Failed to load vote status:', error);
+            }
+        }
+
+        // Create voting controls HTML
+        function createVoteControls(targetType, targetId) {
+            return `
+                <div class="vote-controls" data-vote-target="${targetType}-${targetId}">
+                    <button class="vote-btn upvote" onclick="vote('${targetType}', ${targetId}, 'up')">▲</button>
+                    <span class="vote-count upvote-count">0</span>
+                    <span class="vote-count downvote-count">0</span>
+                    <button class="vote-btn downvote" onclick="vote('${targetType}', ${targetId}, 'down')">▼</button>
+                </div>
+            `;
+        }
+
+        // Image modal for viewing
+        function openImageModal(imagePath) {
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.9); display: flex; align-items: center;
+                justify-content: center; z-index: 2000; cursor: pointer;
+            `;
+            
+            const img = document.createElement('img');
+            img.src = imagePath;
+            img.style.cssText = 'max-width: 90%; max-height: 90%; border-radius: 5px;';
+            
+            modal.appendChild(img);
+            modal.onclick = () => modal.remove();
+            document.body.appendChild(modal);
         }
 
         // Tab switching for decoy site
@@ -1024,6 +1353,35 @@
             showNotification('Disconnected from Hunter-Net.', 'info');
         }
 
+        // Account deletion
+        async function deleteAccount() {
+            const password = prompt('Enter your password to confirm account deletion:');
+            if (!password) return;
+            
+            const reason = prompt('Reason for deletion (optional):');
+            
+            if (!confirm('Are you absolutely sure you want to delete your account? This cannot be undone.')) {
+                return;
+            }
+            
+            try {
+                showNotification('Deleting account...', 'info');
+                
+                await apiRequest('/api/account', {
+                    method: 'DELETE',
+                    body: JSON.stringify({ password, reason })
+                });
+                
+                showNotification('Account deleted successfully. Goodbye, Hunter.', 'success');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+                
+            } catch (error) {
+                showNotification('Failed to delete account: ' + error.message, 'error');
+            }
+        }
+
         // Hunter-Net initialization
         function initializeHunterNet() {
             document.getElementById('decoy-site').style.display = 'none';
@@ -1031,6 +1389,12 @@
             
             document.getElementById('user-display').textContent = currentUser.handle_number;
             document.getElementById('field-cred').textContent = currentUser.field_cred || 0;
+            document.getElementById('field-cred-value').textContent = currentUser.field_cred || 0;
+
+            // Show admin nav if Witness1
+            if (currentUser.is_admin && currentUser.handle_number === 'Witness1') {
+                document.getElementById('admin-nav-link').style.display = 'block';
+            }
 
             // Initialize Socket.IO
             socket = io({
@@ -1049,6 +1413,17 @@
 
             loadBoards();
             loadChatRooms();
+
+            // Set up image upload handlers
+            setTimeout(() => {
+                handleImageUpload('thread-image', 'thread-image-preview');
+                handleImageUpload('post-image', 'post-image-preview');
+                
+                const chatImageInput = document.getElementById('chat-image');
+                if (chatImageInput) {
+                    chatImageInput.addEventListener('change', handleChatImageUpload);
+                }
+            }, 100);
         }
 
         // Hunter-Net navigation
@@ -1066,6 +1441,87 @@
             if (sectionName === 'chat' && socket) {
                 socket.emit('join', currentChatRoom);
                 loadChatMessages(currentChatRoom);
+            }
+        }
+
+        function showAccountSection() {
+            showHunterSection('account');
+        }
+
+        function showAdminPanel() {
+            if (currentUser.is_admin && currentUser.handle_number === 'Witness1') {
+                showHunterSection('admin');
+                loadAdminPanel();
+            }
+        }
+
+        // Enhanced thread creation with image support
+        async function handleNewThread(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(event.target);
+            const imageInput = document.getElementById('thread-image');
+            
+            try {
+                showNotification('Creating thread...', 'info');
+                
+                const requestData = {
+                    title: formData.get('title'),
+                    body_md: formData.get('body_md'),
+                    signal: formData.get('signal'),
+                    tags: formData.get('tags')
+                };
+                
+                if (imageInput.dataset.imagePath) {
+                    requestData.image_path = imageInput.dataset.imagePath;
+                }
+                
+                await apiRequest(`/api/boards/${currentBoard.key}/threads`, {
+                    method: 'POST',
+                    body: JSON.stringify(requestData)
+                });
+                
+                showNotification('Thread created successfully', 'success');
+                event.target.reset();
+                document.getElementById('thread-image-preview').style.display = 'none';
+                showThreadList();
+                loadThreads(currentBoard.key, currentBoard.name);
+                
+            } catch (error) {
+                showNotification(error.message, 'error');
+            }
+        }
+
+        // Enhanced post creation with image support
+        async function handleNewPost(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(event.target);
+            const imageInput = document.getElementById('post-image');
+            
+            try {
+                showNotification('Posting reply...', 'info');
+                
+                const requestData = {
+                    body_md: formData.get('body_md')
+                };
+                
+                if (imageInput.dataset.imagePath) {
+                    requestData.image_path = imageInput.dataset.imagePath;
+                }
+                
+                await apiRequest(`/api/threads/${currentThread.id}/posts`, {
+                    method: 'POST',
+                    body: JSON.stringify(requestData)
+                });
+                
+                showNotification('Reply posted successfully', 'success');
+                event.target.reset();
+                document.getElementById('post-image-preview').style.display = 'none';
+                loadThread(currentThread.id, currentThread.title);
+                
+            } catch (error) {
+                showNotification(error.message, 'error');
             }
         }
 
@@ -1112,20 +1568,28 @@
             container.innerHTML = threads.map(thread => `
                 <div class="thread-item ${thread.sticky ? 'sticky' : ''} ${thread.locked ? 'locked' : ''}" 
                      onclick="loadThread(${thread.id}, '${thread.title}')">
-                    <div class="thread-title">
-                        ${thread.sticky ? '📌 ' : ''}
-                        ${thread.locked ? '🔒 ' : ''}
-                        ${thread.title}
-                    </div>
-                    <div class="thread-meta">
-                        <span>by ${thread.author}</span>
-                        <span>${new Date(thread.created_at).toLocaleDateString()}</span>
-                        <span>${thread.post_count} replies</span>
-                        ${thread.signal_type ? `<span class="signal-badge">${thread.signal_type}</span>` : ''}
-                        ${thread.tags ? `<span>Tags: ${thread.tags}</span>` : ''}
+                    <div class="content-with-votes">
+                        ${createVoteControls('thread', thread.id)}
+                        <div class="content-body">
+                            <div class="thread-title">
+                                ${thread.sticky ? '📌 ' : ''}
+                                ${thread.locked ? '🔒 ' : ''}
+                                ${thread.title}
+                            </div>
+                            <div class="thread-meta">
+                                <span>by ${thread.author}</span>
+                                <span>${new Date(thread.created_at).toLocaleDateString()}</span>
+                                <span>${thread.post_count} replies</span>
+                                ${thread.signal_type ? `<span class="signal-badge">${thread.signal_type}</span>` : ''}
+                                ${thread.tags ? `<span>Tags: ${thread.tags}</span>` : ''}
+                            </div>
+                        </div>
                     </div>
                 </div>
             `).join('');
+            
+            // Load vote status for all threads
+            threads.forEach(thread => loadVoteStatus('thread', thread.id));
         }
 
         async function loadThread(threadId, threadTitle) {
@@ -1143,35 +1607,61 @@
             }
         }
 
+        // Enhanced thread display with voting and images
         function displayThread(thread, posts) {
             const threadContent = document.getElementById('thread-content');
+            
+            const imageHtml = thread.image_path ? 
+                `<img src="${thread.image_path}" alt="Thread image" class="uploaded-image" onclick="openImageModal('${thread.image_path}')">` : '';
+            
             threadContent.innerHTML = `
                 <div class="thread-content">
-                    <h2>${thread.title}</h2>
-                    <div class="thread-meta">
-                        <span>by ${thread.author}</span>
-                        <span>${new Date(thread.created_at).toLocaleDateString()}</span>
-                        ${thread.signal_type ? `<span class="signal-badge">${thread.signal_type}</span>` : ''}
-                        ${thread.tags ? `<span>Tags: ${thread.tags}</span>` : ''}
-                        ${currentUser.is_admin ? `
-                            <button class="btn btn-secondary" onclick="toggleSticky(${thread.id}, ${!thread.sticky})">${thread.sticky ? 'Unstick' : 'Stick'}</button>
-                            <button class="btn btn-secondary" onclick="toggleLocked(${thread.id}, ${!thread.locked})">${thread.locked ? 'Unlock' : 'Lock'}</button>
-                        ` : ''}
+                    <div class="content-with-votes">
+                        ${createVoteControls('thread', thread.id)}
+                        <div class="content-body">
+                            <h2>${thread.title}</h2>
+                            <div class="thread-meta">
+                                <span>by ${thread.author}</span>
+                                <span>${new Date(thread.created_at).toLocaleDateString()}</span>
+                                ${thread.signal_type ? `<span class="signal-badge">${thread.signal_type}</span>` : ''}
+                                ${thread.tags ? `<span>Tags: ${thread.tags}</span>` : ''}
+                                ${currentUser.is_admin ? `
+                                    <button class="btn btn-secondary" onclick="toggleSticky(${thread.id}, ${!thread.sticky})">${thread.sticky ? 'Unstick' : 'Stick'}</button>
+                                    <button class="btn btn-secondary" onclick="toggleLocked(${thread.id}, ${!thread.locked})">${thread.locked ? 'Unlock' : 'Lock'}</button>
+                                ` : ''}
+                            </div>
+                            ${imageHtml}
+                            <div class="post-body">${thread.body_md}</div>
+                        </div>
                     </div>
-                    <div class="post-body">${thread.body_md}</div>
                 </div>
             `;
 
             const postsContainer = document.getElementById('posts-container');
-            postsContainer.innerHTML = posts.map(post => `
-                <div class="post-item">
-                    <div class="post-header">
-                        <span class="post-author">${post.author}</span>
-                        <span class="post-time">${new Date(post.created_at).toLocaleString()}</span>
+            postsContainer.innerHTML = posts.map(post => {
+                const postImageHtml = post.image_path ? 
+                    `<img src="${post.image_path}" alt="Post image" class="uploaded-image" onclick="openImageModal('${post.image_path}')">` : '';
+                
+                return `
+                    <div class="post-item">
+                        <div class="content-with-votes">
+                            ${createVoteControls('post', post.id)}
+                            <div class="content-body">
+                                <div class="post-header">
+                                    <span class="post-author">${post.author}</span>
+                                    <span class="post-time">${new Date(post.created_at).toLocaleString()}</span>
+                                </div>
+                                ${postImageHtml}
+                                <div class="post-body">${post.body_md}</div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="post-body">${post.body_md}</div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
+            
+            // Load vote status for thread and all posts
+            loadVoteStatus('thread', thread.id);
+            posts.forEach(post => loadVoteStatus('post', post.id));
         }
 
         function showBoardList() {
@@ -1198,58 +1688,6 @@
         function showNewThreadForm() {
             document.getElementById('thread-list-view').classList.add('hidden');
             document.getElementById('new-thread-form').classList.remove('hidden');
-        }
-
-        async function handleNewThread(event) {
-            event.preventDefault();
-            
-            const formData = new FormData(event.target);
-            
-            try {
-                showNotification('Creating thread...', 'info');
-                
-                await apiRequest(`/api/boards/${currentBoard.key}/threads`, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        title: formData.get('title'),
-                        body_md: formData.get('body_md'),
-                        signal: formData.get('signal'),
-                        tags: formData.get('tags')
-                    })
-                });
-                
-                showNotification('Thread created successfully', 'success');
-                event.target.reset();
-                showThreadList();
-                loadThreads(currentBoard.key, currentBoard.name);
-                
-            } catch (error) {
-                showNotification(error.message, 'error');
-            }
-        }
-
-        async function handleNewPost(event) {
-            event.preventDefault();
-            
-            const formData = new FormData(event.target);
-            
-            try {
-                showNotification('Posting reply...', 'info');
-                
-                await apiRequest(`/api/threads/${currentThread.id}/posts`, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        body_md: formData.get('body_md')
-                    })
-                });
-                
-                showNotification('Reply posted successfully', 'success');
-                event.target.reset();
-                loadThread(currentThread.id, currentThread.title);
-                
-            } catch (error) {
-                showNotification(error.message, 'error');
-            }
         }
 
         async function toggleSticky(threadId, sticky) {
@@ -1317,15 +1755,30 @@
             try {
                 const data = await apiRequest(`/api/chat/rooms/${roomKey}/messages?limit=50`);
                 const container = document.getElementById('chat-messages');
-                container.innerHTML = data.messages.map(message => `
-                    <div class="chat-message">
-                        <span class="chat-author">${message.author}:</span>
-                        ${message.body}
-                        <span class="chat-time">${new Date(message.created_at).toLocaleTimeString()}</span>
-                    </div>
-                `).join('');
+                container.innerHTML = data.messages.map(message => {
+                    const imageHtml = message.image_path ? 
+                        `<img src="${message.image_path}" alt="Chat image" class="uploaded-image" onclick="openImageModal('${message.image_path}')">` : '';
+                    
+                    return `
+                        <div class="chat-message">
+                            <div class="content-with-votes">
+                                ${createVoteControls('message', message.id)}
+                                <div class="content-body">
+                                    <span class="chat-author">${message.author}:</span>
+                                    ${imageHtml}
+                                    ${message.body}
+                                    <span class="chat-time">${new Date(message.created_at).toLocaleTimeString()}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
                 
-                // Scroll to bottom
+                // Load vote status for messages
+                data.messages.forEach(message => {
+                    if (message.id) loadVoteStatus('message', message.id);
+                });
+                
                 container.scrollTop = container.scrollHeight;
             } catch (error) {
                 console.error('Failed to load chat messages:', error);
@@ -1336,32 +1789,164 @@
             const container = document.getElementById('chat-messages');
             const messageElement = document.createElement('div');
             messageElement.className = 'chat-message';
+            
+            const imageHtml = message.image_path ? 
+                `<img src="${message.image_path}" alt="Chat image" class="uploaded-image" onclick="openImageModal('${message.image_path}')">` : '';
+            
             messageElement.innerHTML = `
-                <span class="chat-author">${message.author}:</span>
-                ${message.body}
-                <span class="chat-time">${new Date(message.created_at).toLocaleTimeString()}</span>
+                <div class="content-with-votes">
+                    ${createVoteControls('message', message.id)}
+                    <div class="content-body">
+                        <span class="chat-author">${message.author}:</span>
+                        ${imageHtml}
+                        ${message.body}
+                        <span class="chat-time">${new Date(message.created_at).toLocaleTimeString()}</span>
+                    </div>
+                </div>
             `;
             
             container.appendChild(messageElement);
             container.scrollTop = container.scrollHeight;
+            
+            if (message.id) {
+                loadVoteStatus('message', message.id);
+            }
         }
 
+        // Enhanced chat with image support
         function sendChatMessage() {
             const input = document.getElementById('chat-input');
             const message = input.value.trim();
             
-            if (message && socket) {
+            if ((message || selectedChatImage) && socket) {
                 socket.emit('message', {
                     roomKey: currentChatRoom,
-                    body: message
+                    body: message,
+                    image_path: selectedChatImage
                 });
                 input.value = '';
+                selectedChatImage = null;
+                
+                const preview = document.getElementById('chat-image-preview');
+                if (preview) {
+                    preview.style.display = 'none';
+                }
             }
         }
 
         function handleChatKeypress(event) {
             if (event.key === 'Enter') {
                 sendChatMessage();
+            }
+        }
+
+        // Handle chat image upload
+        function handleChatImageUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                uploadImage(file).then(imagePath => {
+                    if (imagePath) {
+                        selectedChatImage = imagePath;
+                        
+                        let preview = document.getElementById('chat-image-preview');
+                        if (!preview) {
+                            preview = document.createElement('img');
+                            preview.id = 'chat-image-preview';
+                            preview.className = 'image-preview';
+                            document.querySelector('.chat-input').appendChild(preview);
+                        }
+                        
+                        preview.src = imagePath;
+                        preview.style.display = 'block';
+                    }
+                });
+            }
+        }
+
+        // Admin functions (Witness1 only)
+        async function loadAdminPanel() {
+            if (!currentUser.is_admin || currentUser.handle_number !== 'Witness1') {
+                return;
+            }
+            
+            try {
+                const response = await apiRequest('/api/admin/users');
+                displayUserList(response.users);
+            } catch (error) {
+                showNotification('Failed to load admin panel: ' + error.message, 'error');
+            }
+        }
+
+        function displayUserList(users) {
+            const adminSection = document.getElementById('admin-section');
+            if (!adminSection) return;
+            
+            adminSection.innerHTML = `
+                <div class="admin-panel">
+                    <h2>🔱 WITNESS1 ADMIN CONTROL</h2>
+                    <div class="user-list">
+                        ${users.map(user => `
+                            <div class="user-item ${user.deleted_at ? 'deleted' : ''}">
+                                <div>
+                                    <strong>${user.handle_number}</strong> 
+                                    (Field Cred: ${user.field_cred})
+                                    <br>
+                                    <small>
+                                        Threads: ${user.thread_count} | Posts: ${user.post_count} | 
+                                        Joined: ${new Date(user.created_at).toLocaleDateString()}
+                                        ${user.deleted_at ? ` | DELETED: ${user.deletion_reason}` : ''}
+                                    </small>
+                                </div>
+                                <div class="admin-controls">
+                                    <input type="number" id="cred-${user.id}" value="${user.field_cred}" style="width: 60px;">
+                                    <button class="btn btn-secondary" onclick="updateUserFieldCred(${user.id})">Set Cred</button>
+                                    ${!user.deleted_at ? `<button class="btn btn-danger" onclick="adminDeleteUser(${user.id})">Delete</button>` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        async function updateUserFieldCred(userId) {
+            const newCred = document.getElementById(`cred-${userId}`).value;
+            const reason = prompt('Reason for field cred change:');
+            
+            try {
+                await apiRequest(`/api/admin/users/${userId}/field-cred`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ 
+                        field_cred: parseInt(newCred), 
+                        reason 
+                    })
+                });
+                
+                showNotification('Field cred updated successfully', 'success');
+                loadAdminPanel();
+                
+            } catch (error) {
+                showNotification('Failed to update field cred: ' + error.message, 'error');
+            }
+        }
+
+        async function adminDeleteUser(userId) {
+            const reason = prompt('Reason for deletion:');
+            if (!reason) return;
+            
+            if (!confirm('Are you sure you want to delete this user?')) return;
+            
+            try {
+                await apiRequest(`/api/admin/users/${userId}`, {
+                    method: 'DELETE',
+                    body: JSON.stringify({ reason })
+                });
+                
+                showNotification('User deleted successfully', 'success');
+                loadAdminPanel();
+                
+            } catch (error) {
+                showNotification('Failed to delete user: ' + error.message, 'error');
             }
         }
 
@@ -1378,7 +1963,7 @@
             } catch (error) {
                 // Not logged in, show demo hint
                 setTimeout(() => {
-                    showNotification('Demo: Create an account or try "Witness1" / "password123"', 'info');
+                    showNotification('Demo: Create an account or try "Witness1" / "AdminHunter2024!"', 'info');
                 }, 2000);
             }
         });
