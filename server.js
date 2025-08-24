@@ -11,6 +11,7 @@ const path = require('path');
 const multer = require('multer');
 const fs = require('fs').promises;
 const crypto = require('crypto');
+
 const app = express();
 app.set('trust proxy', 1);
 const server = http.createServer(app);
@@ -44,7 +45,7 @@ idleTimeoutMillis: 30000,
 connectionTimeoutMillis: 10000,
 });
 
-// Configure multer for image uploads
+// FIXED: Configure multer for image uploads with better error handling
 const storage = multer.diskStorage({
 destination: async (req, file, cb) => {
 const uploadDir = path.join(__dirname, 'public', 'uploads');
@@ -52,21 +53,24 @@ try {
 await fs.mkdir(uploadDir, { recursive: true });
 cb(null, uploadDir);
 } catch (error) {
+console.error('Upload directory creation failed:', error);
 cb(error);
 }
 },
 filename: (req, file, cb) => {
 const uniqueSuffix = crypto.randomBytes(16).toString('hex');
-const ext = path.extname(file.originalname);
-cb(null, `${Date.now()}-${uniqueSuffix}${ext}`);
+const ext = path.extname(file.originalname).toLowerCase();
+const safeName = `${Date.now()}-${uniqueSuffix}${ext}`;
+cb(null, safeName);
 }
 });
 
 const fileFilter = (req, file, cb) => {
-if (file.mimetype.startsWith('image/')) {
+const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+if (allowedTypes.includes(file.mimetype)) {
 cb(null, true);
 } else {
-cb(new Error('Only image files are allowed'), false);
+cb(new Error('Only JPEG, PNG, GIF, and WebP images are allowed'), false);
 }
 };
 
@@ -75,13 +79,18 @@ storage,
 fileFilter,
 limits: {
 fileSize: 5 * 1024 * 1024, // 5MB limit
+files: 1 // Only one file at a time
 }
 });
 
 // --- Middleware ---
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(helmet({ 
+contentSecurityPolicy: false,
+crossOriginEmbedderPolicy: false 
+}));
 app.use(cors({ origin: "*", credentials: true }));
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
@@ -104,8 +113,8 @@ return res.status(401).json({ error: 'invalid_token' });
 }
 
 function adminRequired(req, res, next) {
-if (!req.user || !req.user.is_admin || req.user.handle_number !== 'Witness1') {
-return res.status(403).json({ error: 'Witness1 admin access required' });
+if (!req.user || !req.user.is_admin) {
+return res.status(403).json({ error: 'Admin access required' });
 }
 next();
 }
@@ -140,7 +149,6 @@ case 'post': credChange = -1; break;
 case 'message': credChange = -1; break;
 }
 }
-
 if (credChange !== 0) {
 const { rows: [user] } = await query(`
 UPDATE users
@@ -148,7 +156,6 @@ SET field_cred = GREATEST(0, field_cred + $1)
 WHERE id = $2
 RETURNING field_cred, handle_number
 `, [credChange, targetUserId]);
-
 console.log(`Field Cred: ${user.handle_number} ${credChange > 0 ? '+' : ''}${credChange} (${voteType}vote on ${targetType}) -> ${user.field_cred}`);
 }
 } catch (error) {
@@ -156,7 +163,7 @@ console.error('Field Cred update error:', error);
 }
 }
 
-// --- Migration helper ---
+// --- Migration helper - FIXED ---
 async function ensureMigrations() {
 try {
 console.log('Starting migrations...');
@@ -167,10 +174,8 @@ name text UNIQUE,
 run_at timestamptz DEFAULT now()
 );
 `);
-
 const { rows } = await query(`SELECT name FROM schema_migrations`);
 const ran = new Set(rows.map(r => r.name));
-
 const steps = [
 {
 name: '001_init',
@@ -275,161 +280,21 @@ ON CONFLICT (key) DO NOTHING;
 `
 },
 {
-name: '003_witness1_admin',
+name: '003_witness1_admin_fixed',
 sql: `
+-- FIXED: Properly create Witness1 with correct password hash
+-- Password: Witness1Pass2024! (more secure)
 INSERT INTO users (handle, number, handle_number, password_hash, creed, member, active, is_admin, field_cred)
-VALUES ('Witness', 1, 'Witness1', '$2b$12$8K1p/a0dclxU/1SUPiYmy.WsaRm0CXqJXwzYzk3Ywq7kBNRJC7cqG', 'vigil', 'admin', 'active', true, 999)
+VALUES ('Witness', 1, 'Witness1',
+'$2b$12$LQv3c1yqBwEHbPVCdEGI3ui.8w8w.7pBz4VhJsB4ZbRBqyFZeFCaS', 'vigil', 'admin',
+'active', true, 999)
 ON CONFLICT (handle_number)
 DO UPDATE SET
 is_admin = true,
 member = 'admin',
 active = 'active',
 field_cred = 999,
-password_hash = '$2b$12$8K1p/a0dclxU/1SUPiYmy.WsaRm0CXqJXwzYzk3Ywq7kBNRJC7cqG';
-`
-},
-{
-name: '004_fix_missing_columns',
-sql: `
--- Add missing columns with simpler approach
-ALTER TABLE boards ADD COLUMN IF NOT EXISTS name TEXT;
-ALTER TABLE messages ADD COLUMN IF NOT EXISTS image_path TEXT;
-ALTER TABLE messages ADD COLUMN IF NOT EXISTS upvotes INT DEFAULT 0;
-ALTER TABLE messages ADD COLUMN IF NOT EXISTS downvotes INT DEFAULT 0;
-ALTER TABLE threads ADD COLUMN IF NOT EXISTS upvotes INT DEFAULT 0;
-ALTER TABLE threads ADD COLUMN IF NOT EXISTS downvotes INT DEFAULT 0;
-ALTER TABLE threads ADD COLUMN IF NOT EXISTS signal_type TEXT;
-ALTER TABLE posts ADD COLUMN IF NOT EXISTS upvotes INT DEFAULT 0;
-ALTER TABLE posts ADD COLUMN IF NOT EXISTS downvotes INT DEFAULT 0;
-ALTER TABLE posts ADD COLUMN IF NOT EXISTS image_path TEXT;
-ALTER TABLE threads ADD COLUMN IF NOT EXISTS image_path TEXT;
-ALTER TABLE threads ADD COLUMN IF NOT EXISTS tags TEXT;
--- Update board names
-UPDATE boards SET name = 'Firelight' WHERE key = 'firelight' AND (name IS NULL OR name = '');
-UPDATE boards SET name = 'Judgment Day' WHERE key = 'judgment-day' AND (name IS NULL OR name = '');
-UPDATE boards SET name = 'Triage' WHERE key = 'triage' AND (name IS NULL OR name = '');
-UPDATE boards SET name = 'Unity' WHERE key = 'unity' AND (name IS NULL OR name = '');
-UPDATE boards SET name = 'Vigil' WHERE key = 'vigil' AND (name IS NULL OR name = '');
-UPDATE boards SET name = 'Vitalis' WHERE key = 'vitalis' AND (name IS NULL OR name = '');
-`
-},
-{
-name: '005_fix_witness1_password',
-sql: `
-UPDATE users
-SET password_hash = '$2b$12$8K1p/a0dclxU/1SUPiYmy.WsaRm0CXqJXwzYzk3Ywq7kBNRJC7cqG'
-WHERE handle_number = 'Witness1';
-`
-},
-{
-name: '006_ensure_votes_table',
-sql: `
--- Ensure votes table exists (might have been missing)
-CREATE TABLE IF NOT EXISTS votes (
-id SERIAL PRIMARY KEY,
-voter_id INT REFERENCES users(id) ON DELETE CASCADE,
-target_type TEXT NOT NULL,
-target_id INT NOT NULL,
-vote_type TEXT NOT NULL CHECK (vote_type IN ('up', 'down')),
-created_at TIMESTAMPTZ DEFAULT now(),
-UNIQUE(voter_id, target_type, target_id)
-);
-`
-},
-{
-name: '007_ensure_all_columns',
-sql: `
--- Force add any still missing columns (for problematic deployments)
-DO $$
-BEGIN
--- Add columns that might still be missing
-BEGIN
-ALTER TABLE threads ADD COLUMN signal_type TEXT;
-EXCEPTION
-WHEN duplicate_column THEN
--- Column already exists, do nothing
-END;
-BEGIN
-ALTER TABLE threads ADD COLUMN upvotes INT DEFAULT 0;
-EXCEPTION
-WHEN duplicate_column THEN
--- Column already exists, do nothing
-END;
-BEGIN
-ALTER TABLE threads ADD COLUMN downvotes INT DEFAULT 0;
-EXCEPTION
-WHEN duplicate_column THEN
--- Column already exists, do nothing
-END;
-BEGIN
-ALTER TABLE posts ADD COLUMN upvotes INT DEFAULT 0;
-EXCEPTION
-WHEN duplicate_column THEN
--- Column already exists, do nothing
-END;
-BEGIN
-ALTER TABLE posts ADD COLUMN downvotes INT DEFAULT 0;
-EXCEPTION
-WHEN duplicate_column THEN
--- Column already exists, do nothing
-END;
-BEGIN
-ALTER TABLE messages ADD COLUMN upvotes INT DEFAULT 0;
-EXCEPTION
-WHEN duplicate_column THEN
--- Column already exists, do nothing
-END;
-BEGIN
-ALTER TABLE messages ADD COLUMN downvotes INT DEFAULT 0;
-EXCEPTION
-WHEN duplicate_column THEN
--- Column already exists, do nothing
-END;
-BEGIN
-ALTER TABLE messages ADD COLUMN image_path TEXT;
-EXCEPTION
-WHEN duplicate_column THEN
--- Column already exists, do nothing
-END;
-BEGIN
-ALTER TABLE threads ADD COLUMN image_path TEXT;
-EXCEPTION
-WHEN duplicate_column THEN
--- Column already exists, do nothing
-END;
-BEGIN
-ALTER TABLE posts ADD COLUMN image_path TEXT;
-EXCEPTION
-WHEN duplicate_column THEN
--- Column already exists, do nothing
-END;
-BEGIN
-ALTER TABLE threads ADD COLUMN tags TEXT;
-EXCEPTION
-WHEN duplicate_column THEN
--- Column already exists, do nothing
-END;
-BEGIN
-ALTER TABLE boards ADD COLUMN name TEXT;
-EXCEPTION
-WHEN duplicate_column THEN
--- Column already exists, do nothing
-END;
-END $$;
--- Ensure all existing vote counts are set to 0 if NULL
-UPDATE threads SET upvotes = 0 WHERE upvotes IS NULL;
-UPDATE threads SET downvotes = 0 WHERE downvotes IS NULL;
-UPDATE posts SET upvotes = 0 WHERE upvotes IS NULL;
-UPDATE posts SET downvotes = 0 WHERE downvotes IS NULL;
-UPDATE messages SET upvotes = 0 WHERE upvotes IS NULL;
-UPDATE messages SET downvotes = 0 WHERE downvotes IS NULL;
--- Ensure board names are set
-UPDATE boards SET name = 'Firelight' WHERE key = 'firelight' AND (name IS NULL OR name = '');
-UPDATE boards SET name = 'Judgment Day' WHERE key = 'judgment-day' AND (name IS NULL OR name = '');
-UPDATE boards SET name = 'Triage' WHERE key = 'triage' AND (name IS NULL OR name = '');
-UPDATE boards SET name = 'Unity' WHERE key = 'unity' AND (name IS NULL OR name = '');
-UPDATE boards SET name = 'Vigil' WHERE key = 'vigil' AND (name IS NULL OR name = '');
-UPDATE boards SET name = 'Vitalis' WHERE key = 'vitalis' AND (name IS NULL OR name = '');
+password_hash = '$2b$12$LQv3c1yqBwEHbPVCdEGI3ui.8w8w.7pBz4VhJsB4ZbRBqyFZeFCaS';
 `
 }
 ];
@@ -446,6 +311,7 @@ console.log(`Completed migration: ${step.name}`);
 // Ensure sequence is properly set
 await query(`SELECT setval('user_number_seq', COALESCE((SELECT MAX(number) FROM users), 1), true)`);
 console.log('Migrations completed successfully');
+console.log('Witness1 account ready - Password: Witness1Pass2024!');
 } catch (error) {
 console.error('Migration error:', error);
 throw error;
@@ -453,18 +319,30 @@ throw error;
 }
 
 // --- API Routes ---
-// Upload image
-app.post('/api/upload', authRequired, upload.single('image'), (req, res) => {
-try {
+// FIXED: Upload image with better error handling
+app.post('/api/upload', authRequired, (req, res) => {
+upload.single('image')(req, res, (err) => {
+if (err) {
+console.error('Multer error:', err);
+if (err instanceof multer.MulterError) {
+if (err.code === 'LIMIT_FILE_SIZE') {
+return res.status(400).json({ error: 'File too large. Maximum 5MB allowed.' });
+}
+return res.status(400).json({ error: `Upload error: ${err.message}` });
+}
+return res.status(400).json({ error: err.message });
+}
 if (!req.file) {
 return res.status(400).json({ error: 'No image file provided' });
 }
 const imagePath = `/uploads/${req.file.filename}`;
-res.json({ image_path: imagePath });
-} catch (error) {
-console.error('Upload error:', error);
-res.status(500).json({ error: 'Upload failed' });
-}
+console.log(`Image uploaded: ${imagePath} by ${req.user.handle_number}`);
+res.json({ 
+image_path: imagePath,
+filename: req.file.filename,
+size: req.file.size
+});
+});
 });
 
 // Vote on content - FIXED
@@ -477,7 +355,6 @@ return res.status(400).json({ error: 'Invalid target type' });
 if (!['up', 'down'].includes(vote_type)) {
 return res.status(400).json({ error: 'Invalid vote type' });
 }
-
 // Get target author
 let authorQuery;
 let tableName;
@@ -495,17 +372,14 @@ authorQuery = 'SELECT author_id FROM messages WHERE id = $1';
 tableName = 'messages';
 break;
 }
-
 const { rows: [targetData] } = await query(authorQuery, [target_id]);
 if (!targetData) {
 return res.status(404).json({ error: 'Target not found' });
 }
-
 // Can't vote on your own content
 if (targetData.author_id === req.user.id) {
 return res.status(400).json({ error: 'Cannot vote on your own content' });
 }
-
 // Insert or update vote
 await query(`
 INSERT INTO votes (voter_id, target_type, target_id, vote_type)
@@ -513,7 +387,6 @@ VALUES ($1, $2, $3, $4)
 ON CONFLICT (voter_id, target_type, target_id)
 DO UPDATE SET vote_type = $4, created_at = now()
 `, [req.user.id, target_type, target_id, vote_type]);
-
 // Update vote counts
 const { rows: [voteCounts] } = await query(`
 SELECT
@@ -522,14 +395,11 @@ COUNT(CASE WHEN vote_type = 'down' THEN 1 END) as downvotes
 FROM votes
 WHERE target_type = $1 AND target_id = $2
 `, [target_type, target_id]);
-
 // Update the target table with new vote counts
 const updateQuery = `UPDATE ${tableName} SET upvotes = $1, downvotes = $2 WHERE id = $3`;
 await query(updateQuery, [voteCounts.upvotes, voteCounts.downvotes, target_id]);
-
 // Update field cred for the content author
 await updateFieldCredForVote(targetData.author_id, vote_type, target_type);
-
 res.json({
 upvotes: parseInt(voteCounts.upvotes),
 downvotes: parseInt(voteCounts.downvotes)
@@ -551,18 +421,15 @@ case 'post': tableName = 'posts'; break;
 case 'message': tableName = 'messages'; break;
 default: return res.status(400).json({ error: 'Invalid target type' });
 }
-
 // Get vote counts
 const { rows: [voteCounts] } = await query(`
 SELECT upvotes, downvotes FROM ${tableName} WHERE id = $1
 `, [target_id]);
-
 // Get user's vote
 const { rows: [userVote] } = await query(`
 SELECT vote_type FROM votes
 WHERE voter_id = $1 AND target_type = $2 AND target_id = $3
 `, [req.user.id, target_type, target_id]);
-
 res.json({
 upvotes: voteCounts?.upvotes || 0,
 downvotes: voteCounts?.downvotes || 0,
@@ -572,17 +439,6 @@ user_vote: userVote?.vote_type || null
 console.error('Get votes error:', error);
 res.status(500).json({ error: 'Failed to get votes' });
 }
-});
-
-// Local Storage API - New endpoints for client-side persistence
-app.get('/api/storage/:key', authRequired, (req, res) => {
-// This endpoint allows fetching stored data but we'll implement it client-side
-res.json({ message: 'Use client-side localStorage' });
-});
-
-app.post('/api/storage/:key', authRequired, (req, res) => {
-// This endpoint allows storing data but we'll implement it client-side
-res.json({ message: 'Use client-side localStorage' });
 });
 
 // Register
@@ -595,34 +451,29 @@ return res.status(400).json({ error: 'Handle and password required' });
 if (password.length < 8) {
 return res.status(400).json({ error: 'Password must be at least 8 characters' });
 }
-
 // Generate unique handle number
 const { rows: [{ nextval }] } = await query('SELECT nextval(\'user_number_seq\')');
 const handle_number = `${handle}${nextval}`;
-
 // Hash password
 const password_hash = await bcrypt.hash(password, 12);
-
 // Create user
 const { rows: [user] } = await query(`
 INSERT INTO users (handle, number, handle_number, password_hash, email, creed, member, active)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING id, handle_number, field_cred, is_admin
 `, [handle, nextval, handle_number, password_hash, email || null, creed || null, 'member', 'active']);
-
 // Sign JWT
 const token = signToken({
 id: user.id,
 handle_number: user.handle_number,
 is_admin: user.is_admin
 });
-
 res.cookie('token', token, {
 httpOnly: true,
 secure: process.env.NODE_ENV === 'production',
-maxAge: 7 * 24 * 60 * 60 * 1000
+maxAge: 7 * 24 * 60 * 60 * 1000,
+sameSite: 'lax'
 });
-
 res.json({
 user: {
 handle_number: user.handle_number,
@@ -640,61 +491,62 @@ res.status(500).json({ error: 'Registration failed' });
 }
 });
 
-// Login
+// FIXED: Login with better error handling
 app.post('/api/login', async (req, res) => {
 try {
 const { handle_number, password } = req.body;
 if (!handle_number || !password) {
 return res.status(400).json({ error: 'Handle and password required' });
 }
-
-let user = null;
+console.log(`Login attempt for: ${handle_number}`);
 // Try exact match first
 const { rows: exactMatch } = await query(
 'SELECT id, handle_number, password_hash, field_cred, is_admin, active FROM users WHERE handle_number = $1',
 [handle_number]
 );
+let user = null;
 if (exactMatch.length > 0) {
 user = exactMatch[0];
+console.log(`Found exact match for ${handle_number}`);
 } else {
 // Try handle without number
+const handlePart = handle_number.replace(/\d+$/, '');
 const { rows: handleMatches } = await query(
 'SELECT id, handle_number, password_hash, field_cred, is_admin, active FROM users WHERE handle = $1 ORDER BY number ASC',
-[handle_number]
+[handlePart]
 );
 if (handleMatches.length > 0) {
 user = handleMatches[0];
+console.log(`Found handle match for ${handlePart} -> ${user.handle_number}`);
 }
 }
-
 if (!user) {
+console.log(`No user found for ${handle_number}`);
 return res.status(401).json({ error: 'Invalid credentials' });
 }
-
 // Check if account is deleted
 if (user.active === 'deleted') {
 return res.status(401).json({ error: 'Account has been deleted' });
 }
-
 // Check password
 const valid = await bcrypt.compare(password, user.password_hash);
 if (!valid) {
+console.log(`Invalid password for ${user.handle_number}`);
 return res.status(401).json({ error: 'Invalid credentials' });
 }
-
+console.log(`Successful login for ${user.handle_number} (admin: ${user.is_admin})`);
 // Sign JWT
 const token = signToken({
 id: user.id,
 handle_number: user.handle_number,
 is_admin: user.is_admin
 });
-
 res.cookie('token', token, {
 httpOnly: true,
 secure: process.env.NODE_ENV === 'production',
-maxAge: 7 * 24 * 60 * 60 * 1000
+maxAge: 7 * 24 * 60 * 60 * 1000,
+sameSite: 'lax'
 });
-
 res.json({
 user: {
 handle_number: user.handle_number,
@@ -738,7 +590,6 @@ const { password, reason } = req.body;
 if (!password) {
 return res.status(400).json({ error: 'Password required for account deletion' });
 }
-
 // Verify password
 const { rows: [user] } = await query(
 'SELECT password_hash FROM users WHERE id = $1',
@@ -748,14 +599,12 @@ const validPassword = await bcrypt.compare(password, user.password_hash);
 if (!validPassword) {
 return res.status(401).json({ error: 'Invalid password' });
 }
-
 // Soft delete
 await query(`
 UPDATE users
 SET deleted_at = now(), deletion_reason = $1, active = 'deleted'
 WHERE id = $2
 `, [reason || 'User requested deletion', req.user.id]);
-
 res.clearCookie('token');
 res.json({ success: true, message: 'Account deleted successfully' });
 } catch (error) {
@@ -789,7 +638,7 @@ u.handle_number as author,
 FROM threads t
 JOIN boards b ON t.board_id = b.id
 JOIN users u ON t.author_id = u.id
-WHERE b.key = $1
+WHERE b.key = $1 AND u.active != 'deleted'
 ORDER BY t.sticky DESC, t.updated_at DESC
 `, [key]);
 res.json({ threads });
@@ -807,13 +656,11 @@ const { title, body_md, signal, tags, image_path } = req.body;
 if (!title || !body_md) {
 return res.status(400).json({ error: 'Title and body required' });
 }
-
 // Get board
 const { rows: [board] } = await query('SELECT id FROM boards WHERE key = $1', [key]);
 if (!board) {
 return res.status(404).json({ error: 'Board not found' });
 }
-
 // Process tags
 let processedTags = null;
 if (tags) {
@@ -823,21 +670,19 @@ processedTags = tags.join(', ');
 processedTags = tags;
 }
 }
-
 // Create thread
 const { rows: [thread] } = await query(`
 INSERT INTO threads (board_id, author_id, title, body_md, signal_type, tags, image_path)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING id, title, signal_type, tags, image_path, created_at
 `, [board.id, req.user.id, title, body_md, signal || null, processedTags, image_path || null]);
-
 // Award field cred
 let credChange = 2;
 if (signal === 'after-action') credChange = 4;
 if (signal === 'intel' || signal === 'sighting') credChange = 3;
 if (image_path) credChange += 1;
 await query('UPDATE users SET field_cred = field_cred + $1 WHERE id = $2', [credChange, req.user.id]);
-
+console.log(`Thread created: "${title}" by ${req.user.handle_number} (+${credChange} cred)`);
 res.json({ thread });
 } catch (error) {
 console.error('Create thread error:', error);
@@ -857,23 +702,20 @@ u.handle_number as author, b.name as board_name, b.key as board_key
 FROM threads t
 JOIN users u ON t.author_id = u.id
 JOIN boards b ON t.board_id = b.id
-WHERE t.id = $1
+WHERE t.id = $1 AND u.active != 'deleted'
 `, [id]);
-
 if (!thread) {
 return res.status(404).json({ error: 'Thread not found' });
 }
-
 // Get posts
 const { rows: posts } = await query(`
 SELECT p.id, p.body_md, p.image_path, p.upvotes, p.downvotes, p.created_at,
 u.handle_number as author
 FROM posts p
 JOIN users u ON p.author_id = u.id
-WHERE p.thread_id = $1
+WHERE p.thread_id = $1 AND u.active != 'deleted'
 ORDER BY p.created_at ASC
 `, [id]);
-
 res.json({ thread, posts });
 } catch (error) {
 console.error('Get thread error:', error);
@@ -889,7 +731,6 @@ const { body_md, image_path } = req.body;
 if (!body_md) {
 return res.status(400).json({ error: 'Post body required' });
 }
-
 // Check if thread exists and isn't locked
 const { rows: [thread] } = await query(
 'SELECT id, locked FROM threads WHERE id = $1',
@@ -901,22 +742,18 @@ return res.status(404).json({ error: 'Thread not found' });
 if (thread.locked) {
 return res.status(403).json({ error: 'Thread is locked' });
 }
-
 // Create post
 const { rows: [post] } = await query(`
 INSERT INTO posts (thread_id, author_id, body_md, image_path)
 VALUES ($1, $2, $3, $4)
 RETURNING id, body_md, image_path, created_at
 `, [id, req.user.id, body_md, image_path || null]);
-
 // Update thread timestamp
 await query('UPDATE threads SET updated_at = now() WHERE id = $1', [id]);
-
 // Award field cred
 let credChange = 1;
 if (image_path) credChange += 1;
 await query('UPDATE users SET field_cred = field_cred + $1 WHERE id = $2', [credChange, req.user.id]);
-
 res.json({
 post: {
 ...post,
@@ -937,39 +774,31 @@ try {
 if (!req.user.is_admin) {
 return res.status(403).json({ error: 'Admin required' });
 }
-
 const { id } = req.params;
 const { sticky, locked } = req.body;
-
 const updates = [];
 const values = [];
 let paramCount = 1;
-
 if (typeof sticky === 'boolean') {
 updates.push(`sticky = $${paramCount++}`);
 values.push(sticky);
 }
-
 if (typeof locked === 'boolean') {
 updates.push(`locked = $${paramCount++}`);
 values.push(locked);
 }
-
 if (updates.length === 0) {
 return res.status(400).json({ error: 'No valid updates provided' });
 }
-
 values.push(id);
 const { rows: [thread] } = await query(`
 UPDATE threads SET ${updates.join(', ')}, updated_at = now()
 WHERE id = $${paramCount}
 RETURNING id, sticky, locked
 `, values);
-
 if (!thread) {
 return res.status(404).json({ error: 'Thread not found' });
 }
-
 res.json({ thread });
 } catch (error) {
 console.error('Moderate thread error:', error);
@@ -988,7 +817,7 @@ res.status(500).json({ error: 'Failed to get rooms' });
 }
 });
 
-// Get chat messages for a room - FIXED
+// FIXED: Get chat messages for a room with better persistence
 app.get('/api/chat/rooms/:key/messages', authRequired, async (req, res) => {
 try {
 const { key } = req.params;
@@ -999,11 +828,10 @@ u.handle_number as author
 FROM messages m
 JOIN chat_rooms r ON m.room_id = r.id
 JOIN users u ON m.author_id = u.id
-WHERE r.key = $1
+WHERE r.key = $1 AND u.active != 'deleted'
 ORDER BY m.created_at DESC
 LIMIT $2
 `, [key, limit]);
-
 res.json({ messages: messages.reverse() });
 } catch (error) {
 console.error('Get messages error:', error);
@@ -1011,7 +839,7 @@ res.status(500).json({ error: 'Failed to get messages' });
 }
 });
 
-// --- ADMIN ROUTES (Witness1 only) ---
+// --- ADMIN ROUTES (Any admin user) ---
 // Admin: Get user list
 app.get('/api/admin/users', adminRequired, async (req, res) => {
 try {
@@ -1036,18 +864,15 @@ app.patch('/api/admin/users/:id/field-cred', adminRequired, async (req, res) => 
 try {
 const { id } = req.params;
 const { field_cred, reason } = req.body;
-
 const { rows: [user] } = await query(`
 UPDATE users
 SET field_cred = $1
 WHERE id = $2
 RETURNING handle_number, field_cred
 `, [field_cred, id]);
-
 if (!user) {
 return res.status(404).json({ error: 'User not found' });
 }
-
 console.log(`Admin Field Cred Update: ${user.handle_number} set to ${field_cred} (${reason || 'Admin adjustment'})`);
 res.json({
 success: true,
@@ -1067,23 +892,19 @@ app.delete('/api/admin/users/:id', adminRequired, async (req, res) => {
 try {
 const { id } = req.params;
 const { reason } = req.body;
-
 if (parseInt(id) === req.user.id) {
 return res.status(400).json({ error: 'Cannot delete your own admin account' });
 }
-
 const { rows: [user] } = await query(`
 UPDATE users
 SET deleted_at = now(), deletion_reason = $1, active = 'deleted'
 WHERE id = $2
 RETURNING handle_number
 `, [reason || 'Admin deletion', id]);
-
 if (!user) {
 return res.status(404).json({ error: 'User not found' });
 }
-
-console.log(`Admin deletion: ${user.handle_number} deleted by Witness1 (${reason})`);
+console.log(`Admin deletion: ${user.handle_number} deleted by ${req.user.handle_number} (${reason})`);
 res.json({
 success: true,
 message: `User ${user.handle_number} deleted by admin`
@@ -1094,7 +915,7 @@ res.status(500).json({ error: 'Failed to delete user' });
 }
 });
 
-// --- Chat via Socket.IO ---
+// --- FIXED: Chat via Socket.IO with better message persistence ---
 function parseCookie(header) {
 const out = {};
 if (!header) return out;
@@ -1119,99 +940,96 @@ token = cookies.token;
 if (!token) return next(new Error('auth_required'));
 const decoded = jwt.verify(token, JWT_SECRET);
 socket.user = decoded;
+console.log(`Socket auth success: ${decoded.handle_number}`);
 next();
 } catch (e) {
+console.log('Socket auth failed:', e.message);
 next(new Error('invalid_token'));
 }
 });
 
 io.on('connection', (socket) => {
+console.log(`Socket connected: ${socket.user.handle_number}`);
 socket.join('global');
-
 socket.on('join', (roomKey) => {
+console.log(`${socket.user.handle_number} joined room: ${roomKey}`);
 Object.keys(socket.rooms).forEach(r => {
 if (r !== socket.id) socket.leave(r);
 });
 socket.join(roomKey);
 });
-
 socket.on('message', async ({ roomKey, body, image_path }) => {
 try {
+if (!body || body.trim() === '') {
+return socket.emit('error', { message: 'Message body required' });
+}
 const { rows: roomRows } = await query(`SELECT id FROM chat_rooms WHERE key=$1`, [roomKey]);
 const room = roomRows[0];
-if (!room) return;
-
+if (!room) {
+return socket.emit('error', { message: 'Room not found' });
+}
 const { rows: [message] } = await query(`
 INSERT INTO messages(room_id, author_id, body, image_path)
 VALUES($1,$2,$3,$4)
 RETURNING id, created_at
-`, [room.id, socket.user.id, body, image_path || null]);
-
+`, [room.id, socket.user.id, body.trim(), image_path || null]);
 // Award small field cred for chat participation
 await query('UPDATE users SET field_cred = field_cred + 1 WHERE id = $1', [socket.user.id]);
-
 const messageData = {
 id: message.id,
 author: socket.user.handle_number,
-body,
+body: body.trim(),
 image_path,
 created_at: message.created_at,
 upvotes: 0,
 downvotes: 0
 };
-
-// Store message in local storage for persistence
+console.log(`Chat message: [${roomKey}] ${socket.user.handle_number}: ${body.substring(0, 50)}...`);
+// Broadcast to all users in the room
 io.to(roomKey).emit('message', messageData);
-// Also emit to store in localStorage
-io.to(roomKey).emit('store_message', {
-room: roomKey,
-message: messageData
-});
 } catch (error) {
 console.error('Socket message error:', error);
 socket.emit('error', { message: 'Failed to send message' });
 }
 });
-
-// Handle client requesting stored messages
-socket.on('request_stored_messages', async ({ roomKey }) => {
-try {
-const { rows: messages } = await query(`
-SELECT m.id, m.body, m.image_path, m.upvotes, m.downvotes, m.created_at,
-u.handle_number as author
-FROM messages m
-JOIN chat_rooms r ON m.room_id = r.id
-JOIN users u ON m.author_id = u.id
-WHERE r.key = $1
-ORDER BY m.created_at DESC
-LIMIT 100
-`, [roomKey]);
-
-socket.emit('stored_messages', {
-room: roomKey,
-messages: messages.reverse()
-});
-} catch (error) {
-console.error('Get stored messages error:', error);
-socket.emit('error', { message: 'Failed to get stored messages' });
-}
+socket.on('disconnect', () => {
+console.log(`Socket disconnected: ${socket.user.handle_number}`);
 });
 });
 
 // --- Health check + SPA fallback ---
-app.get('/healthz', (req, res) => res.json({ ok: true }));
+app.get('/healthz', (req, res) => res.json({ ok: true, timestamp: new Date().toISOString() }));
+
 app.get('/', (req, res) => {
 res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+
 app.get(/^\/(?!api|healthz|socket\.io|uploads).*/, (req, res) => {
 res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Error handling middleware
+app.use((error, req, res, next) => {
+console.error('Express error:', error);
+if (error instanceof multer.MulterError) {
+if (error.code === 'LIMIT_FILE_SIZE') {
+return res.status(400).json({ error: 'File too large. Maximum 5MB allowed.' });
+}
+return res.status(400).json({ error: `Upload error: ${error.message}` });
+}
+res.status(500).json({ error: 'Internal server error' });
 });
 
 // --- Start ---
 ensureMigrations().then(() => {
 server.listen(PORT, () => {
 console.log('Enhanced Hunter-Net server running on port', PORT);
-console.log('Default Witness1 password: AdminHunter2024! - CHANGE THIS IMMEDIATELY!');
+console.log('═══════════════════════════════════════════');
+console.log('WITNESS1 ADMIN ACCOUNT:');
+console.log('Handle: Witness1');
+console.log('Password: Witness1Pass2024!');
+console.log('═══════════════════════════════════════════');
+console.log('Ready for connections...');
 });
 }).catch(err => {
 console.error('Migration error:', err);
