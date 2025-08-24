@@ -1,25 +1,28 @@
 {
-  "name": "hunternet-app",
-  "version": "2.0.0",
-  "description": "Hunter-Net (Hunter: The Reckoning) inspired site - functional backend + API + chat with voting, images, and admin",
+  "name": "hunter-net",
+  "version": "1.0.0",
+  "description": "Hunter-Net Forum Application",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js"
   },
-  "engines": {
-    "node": ">=18"
-  },
   "dependencies": {
-    "bcrypt": "^5.1.1",
-    "cookie-parser": "^1.4.6",
+    "express": "^4.18.2",
+    "helmet": "^7.1.0",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2",
-    "helmet": "^7.0.0",
+    "cookie-parser": "^1.4.6",
     "jsonwebtoken": "^9.0.2",
+    "bcrypt": "^5.1.1",
+    "pg": "^8.11.3",
+    "socket.io": "^4.7.5",
     "multer": "^1.4.5-lts.1",
-    "pg": "^8.11.5",
-    "socket.io": "^4.7.5"
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }
