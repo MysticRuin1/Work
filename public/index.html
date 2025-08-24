@@ -818,7 +818,7 @@
                             </div>
                             <div class="form-group">
                                 <label for="login_password">Passphrase:</label>
-                                <input type="password" id="login_password" name="password" placeholder="password123" required>
+                                <input type="password" id="login_password" name="password" placeholder="AdminHunter2024!" required>
                             </div>
                             <button type="submit" class="btn">AUTHENTICATE</button>
                         </form>
@@ -861,7 +861,7 @@
                         <div style="margin-top: 15px; padding: 10px; background: #001100; border: 1px solid #00ff41; border-radius: 3px;">
                             <p style="color: #00ff41; font-size: 0.8em;"><strong>Demo Access:</strong></p>
                             <p style="color: #888; font-size: 0.8em;">Handle: Witness1</p>
-                            <p style="color: #888; font-size: 0.8em;">Password: password123</p>
+                            <p style="color: #888; font-size: 0.8em;">Password: AdminHunter2024!</p>
                         </div>
                     </div>
                 </div>
@@ -1749,7 +1749,7 @@
         function displayChatRooms(rooms) {
             const container = document.getElementById('chat-rooms-list');
             container.innerHTML = rooms.map(room => `
-active' : ''}" 
+                <div class="chat-room ${room.key === currentChatRoom ? 'active' : ''}" 
                      onclick="joinChatRoom('${room.key}')">
                     ${room.title}
                 </div>
@@ -1836,7 +1836,7 @@ active' : ''}"
             } catch (error) {
                 // Not logged in, show demo hints
                 setTimeout(() => {
-                    showNotification('Demo: Try "Witness1" / "password123" for admin access', 'info');
+                    showNotification('Demo: Try "Witness1" / "AdminHunter2024!" for admin access', 'info');
                 }, 2000);
                 
                 setTimeout(() => {
