@@ -295,8 +295,19 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS is_moderator BOOLEAN DEFAULT false;
 `
 },
 {
-name: '003_seed_boards_rooms',
+name: '003_fix_boards_and_seed',
 sql: `
+-- First, drop and recreate the boards table to fix schema issues
+DROP TABLE IF EXISTS boards CASCADE;
+
+CREATE TABLE boards (
+id SERIAL PRIMARY KEY,
+name TEXT NOT NULL,
+description TEXT,
+key TEXT UNIQUE NOT NULL,
+created_at TIMESTAMPTZ DEFAULT now()
+);
+
 INSERT INTO chat_rooms (key, title) VALUES
 ('global', 'Global Chat'),
 ('firelight', 'Firelight'),
@@ -307,7 +318,7 @@ INSERT INTO chat_rooms (key, title) VALUES
 ('vitalis', 'Vitalis')
 ON CONFLICT (key) DO NOTHING;
 
--- Insert boards using explicit column names to avoid ordering issues
+-- Insert boards with the correct schema
 INSERT INTO boards (name, key, description) VALUES
 ('General Discussion', 'general', 'General hunter communications'),
 ('Creature Sightings', 'sightings', 'Report supernatural encounters'),
@@ -318,8 +329,26 @@ INSERT INTO boards (name, key, description) VALUES
 ('Triage', 'triage', 'Medical and psychological support'),
 ('Unity', 'unity', 'Organizing hunters together'),
 ('Vigil', 'vigil', 'Field reports and sightings'),
-('Vitalis', 'vitalis', 'Research and lore')
-ON CONFLICT (key) DO NOTHING;
+('Vitalis', 'vitalis', 'Research and lore');
+
+-- Recreate threads table since it references boards
+CREATE TABLE IF NOT EXISTS threads (
+id SERIAL PRIMARY KEY,
+board_id INT REFERENCES boards(id) ON DELETE CASCADE,
+author_id INT REFERENCES users(id) ON DELETE CASCADE,
+title TEXT NOT NULL,
+body_md TEXT,
+signal_type TEXT,
+tags TEXT,
+image_path TEXT,
+sticky BOOLEAN DEFAULT false,
+locked BOOLEAN DEFAULT false,
+pinned BOOLEAN DEFAULT false,
+upvotes INT DEFAULT 0,
+downvotes INT DEFAULT 0,
+created_at TIMESTAMPTZ DEFAULT now(),
+updated_at TIMESTAMPTZ DEFAULT now()
+);
 `
 },
 {
