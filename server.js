@@ -794,7 +794,7 @@ const { id } = req.params;
 const { rows: [thread] } = await query(`
 SELECT t.id, t.title, t.body_md, t.signal_type, t.tags, t.sticky, t.locked, t.pinned,
 t.image_path, t.upvotes, t.downvotes, t.created_at,
-u.handle_number as author, b.name as board_name, b.key as board_key
+            u.handle_number as author, b.title as board_name, b.key as board_key
 FROM threads t
 JOIN users u ON t.author_id = u.id
 JOIN boards b ON t.board_id = b.id
@@ -1154,8 +1154,7 @@ res.status(500).json({ error: 'Failed to mark as read' });
 // Get chat rooms
 app.get('/api/chat/rooms', authRequired, async (req, res) => {
 try {
-const { rows: rooms } = await query('SELECT key, title FROM chat_rooms ORDER BY
-title');
+        const { rows: rooms } = await query('SELECT key, title FROM chat_rooms ORDER BY title');
 res.json({ rooms });
 } catch (error) {
 console.error('Get rooms error:', error);
