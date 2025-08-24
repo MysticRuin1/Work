@@ -307,17 +307,18 @@ INSERT INTO chat_rooms (key, title) VALUES
 ('vitalis', 'Vitalis')
 ON CONFLICT (key) DO NOTHING;
 
-INSERT INTO boards (name, description, key) VALUES
-('General Discussion', 'General hunter communications', 'general'),
-('Creature Sightings', 'Report supernatural encounters', 'sightings'),
-('Intelligence Reports', 'Share gathered intelligence', 'intel'),
-('Aid Requests', 'Request assistance from other hunters', 'requests'),
-('Firelight', 'Discussion about cryptids and monsters', 'firelight'),
-('Judgment Day', 'Hunter tactics and survival', 'judgment-day'),
-('Triage', 'Medical and psychological support', 'triage'),
-('Unity', 'Organizing hunters together', 'unity'),
-('Vigil', 'Field reports and sightings', 'vigil'),
-('Vitalis', 'Research and lore', 'vitalis')
+-- Insert boards using explicit column names to avoid ordering issues
+INSERT INTO boards (name, key, description) VALUES
+('General Discussion', 'general', 'General hunter communications'),
+('Creature Sightings', 'sightings', 'Report supernatural encounters'),
+('Intelligence Reports', 'intel', 'Share gathered intelligence'),
+('Aid Requests', 'requests', 'Request assistance from other hunters'),
+('Firelight', 'firelight', 'Discussion about cryptids and monsters'),
+('Judgment Day', 'judgment-day', 'Hunter tactics and survival'),
+('Triage', 'triage', 'Medical and psychological support'),
+('Unity', 'unity', 'Organizing hunters together'),
+('Vigil', 'vigil', 'Field reports and sightings'),
+('Vitalis', 'vitalis', 'Research and lore')
 ON CONFLICT (key) DO NOTHING;
 `
 },
