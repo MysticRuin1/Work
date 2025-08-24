@@ -182,7 +182,7 @@ async function ensureMigrations() {
 
         const steps = [
             {
-                name: '001_init',
+                name: '001_init_tables',
                 sql: `
                     CREATE SEQUENCE IF NOT EXISTS user_number_seq START 1;
                     
@@ -199,7 +199,6 @@ async function ensureMigrations() {
                         active TEXT DEFAULT 'active',
                         created_at TIMESTAMPTZ DEFAULT now(),
                         is_admin BOOLEAN DEFAULT false,
-                        is_moderator BOOLEAN DEFAULT false,
                         deleted_at TIMESTAMPTZ,
                         deletion_reason TEXT
                     );
@@ -290,7 +289,13 @@ async function ensureMigrations() {
                 `
             },
             {
-                name: '002_seed_boards_rooms',
+                name: '002_add_moderator_column',
+                sql: `
+                    ALTER TABLE users ADD COLUMN IF NOT EXISTS is_moderator BOOLEAN DEFAULT false;
+                `
+            },
+            {
+                name: '003_seed_boards_rooms',
                 sql: `
                     INSERT INTO chat_rooms (key, title) VALUES
                     ('global', 'Global Chat'),
@@ -317,7 +322,7 @@ async function ensureMigrations() {
                 `
             },
             {
-                name: '003_witness1_admin_correct_password',
+                name: '004_witness1_admin_correct_password',
                 sql: `
                     DELETE FROM users WHERE handle_number = 'Witness1';
                     INSERT INTO users (handle, number, handle_number, password_hash, creed, member, active, is_admin, is_moderator, field_cred)
@@ -327,7 +332,7 @@ async function ensureMigrations() {
                 `
             },
             {
-                name: '004_demo_users',
+                name: '005_demo_users',
                 sql: `
                     INSERT INTO users (handle, number, handle_number, password_hash, creed, member, active, is_admin, is_moderator, field_cred)
                     VALUES 
