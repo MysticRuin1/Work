@@ -218,6 +218,7 @@ display: none;
 min-height: 100vh;
 background: #0a0a0a;
 }
+
 .hunter-header {
 background: linear-gradient(135deg, #1a0000, #330000);
 border-bottom: 2px solid #ff4444;
@@ -306,6 +307,7 @@ max-width: 1200px;
 margin: 0 auto;
 padding: 20px;
 }
+
 .board-list {
 display: grid;
 grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -438,6 +440,7 @@ grid-template-columns: 200px 1fr 200px;
 gap: 20px;
 height: calc(100vh - 200px);
 }
+
 .chat-rooms {
 background: #1a0000;
 border: 1px solid #330000;
@@ -562,6 +565,10 @@ max-height: 100px;
 margin-top: 10px;
 border: 1px solid #333;
 border-radius: 3px;
+cursor: pointer;
+}
+.chat-image-preview:hover {
+opacity: 0.8;
 }
 .members-sidebar {
 background: #1a0000;
@@ -570,6 +577,7 @@ border-radius: 5px;
 padding: 15px;
 overflow-y: auto;
 }
+
 .members-list {
 list-style: none;
 }
@@ -860,6 +868,43 @@ max-height: 200px;
 margin: 10px 0;
 border: 1px solid #333;
 border-radius: 3px;
+cursor: pointer;
+}
+.image-preview:hover {
+opacity: 0.8;
+}
+.image-modal {
+position: fixed;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+background: rgba(0, 0, 0, 0.9);
+z-index: 2000;
+display: none;
+justify-content: center;
+align-items: center;
+}
+.image-modal img {
+max-width: 90%;
+max-height: 90%;
+object-fit: contain;
+}
+.image-modal-close {
+position: absolute;
+top: 20px;
+right: 20px;
+background: #660000;
+color: #ff4444;
+border: 1px solid #ff4444;
+padding: 10px 15px;
+border-radius: 3px;
+cursor: pointer;
+font-size: 1.2em;
+}
+.image-modal-close:hover {
+background: #ff4444;
+color: #fff;
 }
 /* Responsive */
 @media (max-width: 768px) {
@@ -883,6 +928,12 @@ grid-template-columns: 1fr;
 <div class="matrix-bg"></div>
 <div class="notification-panel"></div>
 <div id="server-message-banner" class="server-message-banner hidden"></div>
+
+<!-- Image Modal -->
+<div id="image-modal" class="image-modal">
+<button class="image-modal-close" onclick="closeImageModal()">×</button>
+<img id="modal-image" src="" alt="Full size image">
+</div>
 
 <!-- Decoy Site -->
 <div id="decoy-site" class="decoy-site">
@@ -1360,6 +1411,162 @@ let chatImageData = null;
 let onlineMembers = [];
 let fieldCredLevels = [0, 100, 250, 500, 1000, 2000, 3500, 5000, 7500, 10000];
 
+// Persistent chat message storage with full history
+const chatHistory = {
+    global: [
+        {
+            id: 1,
+            author: 'witness1',
+            body: 'All hunters report status.',
+            created_at: '2024-01-15T20:00:00Z',
+            room_key: 'global',
+            image_path: null
+        },
+        {
+            id: 2,
+            author: 'hunter001',
+            body: 'Chicago sector clear. @witness1 the warehouse sweep was successful.',
+            created_at: '2024-01-15T20:05:00Z',
+            room_key: 'global',
+            image_path: null
+        },
+        {
+            id: 3,
+            author: 'tracker007',
+            body: 'Multiple vampire contacts confirmed in downtown area. Proceeding with caution.',
+            created_at: '2024-01-15T20:10:00Z',
+            room_key: 'global',
+            image_path: null
+        },
+        {
+            id: 4,
+            author: 'witness1',
+            body: 'Good work. Maintain surveillance protocols. All units stay vigilant.',
+            created_at: '2024-01-15T20:12:00Z',
+            room_key: 'global',
+            image_path: null
+        }
+    ],
+    firelight: [
+        {
+            id: 501,
+            author: 'tracker007',
+            body: 'Firelight cell coordination - new purification protocols have been distributed.',
+            created_at: '2024-01-15T19:00:00Z',
+            room_key: 'firelight',
+            image_path: null
+        },
+        {
+            id: 502,
+            author: 'purifier001',
+            body: 'Confirmed receipt. Already implementing the new sanctification procedures.',
+            created_at: '2024-01-15T19:15:00Z',
+            room_key: 'firelight',
+            image_path: null
+        }
+    ],
+    'judgment-day': [
+        {
+            id: 601,
+            author: 'witness1',
+            body: 'Judgment Day operations are proceeding on schedule. All prophecies align.',
+            created_at: '2024-01-15T18:45:00Z',
+            room_key: 'judgment-day',
+            image_path: null
+        },
+        {
+            id: 602,
+            author: 'prophet001',
+            body: 'The signs are clear. Prepare for the next phase of revelation.',
+            created_at: '2024-01-15T19:30:00Z',
+            room_key: 'judgment-day',
+            image_path: null
+        }
+    ],
+    triage: [
+        {
+            id: 701,
+            author: 'medic001',
+            body: 'Triage unit standing by. Medical supplies restocked and ready for deployment.',
+            created_at: '2024-01-15T17:30:00Z',
+            room_key: 'triage',
+            image_path: null
+        },
+        {
+            id: 702,
+            author: 'field_surgeon',
+            body: 'Emergency protocols updated. New trauma kit specifications uploaded.',
+            created_at: '2024-01-15T18:00:00Z',
+            room_key: 'triage',
+            image_path: null
+        }
+    ],
+    unity: [
+        {
+            id: 801,
+            author: 'diplomat001',
+            body: 'Unity negotiations with local authorities proceeding smoothly.',
+            created_at: '2024-01-15T16:45:00Z',
+            room_key: 'unity',
+            image_path: null
+        },
+        {
+            id: 802,
+            author: 'liaison_agent',
+            body: 'Public relations campaign showing positive results. Cover stories holding.',
+            created_at: '2024-01-15T17:20:00Z',
+            room_key: 'unity',
+            image_path: null
+        }
+    ],
+    vigil: [
+        {
+            id: 901,
+            author: 'hunter001',
+            body: 'Vigil patrol routes optimized. Night watch schedules distributed.',
+            created_at: '2024-01-15T19:45:00Z',
+            room_key: 'vigil',
+            image_path: null
+        },
+        {
+            id: 902,
+            author: 'sentinel002',
+            body: 'Confirmed. Surveillance equipment checked and operational.',
+            created_at: '2024-01-15T20:15:00Z',
+            room_key: 'vigil',
+            image_path: null
+        }
+    ],
+    vitalis: [
+        {
+            id: 1001,
+            author: 'researcher001',
+            body: 'Vitalis research into supernatural physiology yielding promising results.',
+            created_at: '2024-01-15T15:30:00Z',
+            room_key: 'vitalis',
+            image_path: null
+        },
+        {
+            id: 1002,
+            author: 'scientist_v',
+            body: 'New biological samples secured for analysis. Lab protocols updated.',
+            created_at: '2024-01-15T16:10:00Z',
+            room_key: 'vitalis',
+            image_path: null
+        }
+    ],
+    admin: [
+        {
+            id: 301,
+            author: 'witness1',
+            body: 'System maintenance completed. All security protocols are operational.',
+            created_at: '2024-01-15T14:00:00Z',
+            room_key: 'admin',
+            image_path: null
+        }
+    ]
+};
+
 // Client storage utility (using memory instead of localStorage)
 const hunterStorage = {
     data: {},
@@ -1403,14 +1610,14 @@ const hunterStorage = {
     }
 };
 
-// Mock API helpers (for demo purposes)
+// Mock API helpers with proper witness1 admin access
 async function apiRequest(url, options = {}) {
-    // This is a mock implementation for demo purposes
-    // In a real application, this would make actual HTTP requests
-    await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 300));
     
     if (url === '/api/login') {
         const credentials = JSON.parse(options.body);
+        // Only witness1 with proper admin privileges
         if (credentials.handle_number === 'witness1' && credentials.password === 'admin123') {
             return {
                 user: {
@@ -1421,18 +1628,6 @@ async function apiRequest(url, options = {}) {
                     is_admin: true,
                     is_moderator: true,
                     created_at: '2023-01-01'
-                }
-            };
-        } else if (credentials.handle_number === 'hunter001' && credentials.password === 'test123') {
-            return {
-                user: {
-                    id: 2,
-                    handle_number: 'hunter001',
-                    field_cred: 250,
-                    creed: 'vigil',
-                    is_admin: false,
-                    is_moderator: false,
-                    created_at: '2023-06-15'
                 }
             };
         } else {
@@ -1460,9 +1655,13 @@ async function apiRequest(url, options = {}) {
         return {
             boards: [
                 { key: 'general', name: 'General Discussion', description: 'General hunter communications' },
-                { key: 'sightings', name: 'Creature Sightings', description: 'Report supernatural encounters' },
-                { key: 'intel', name: 'Intelligence Reports', description: 'Share gathered intelligence' },
-                { key: 'requests', name: 'Aid Requests', description: 'Request assistance from other hunters' }
+                { key: 'firelight', name: 'Firelight', description: 'Purification and sanctification operations' },
+                { key: 'judgment-day', name: 'Judgment Day', description: 'Prophetic visions and revelations' },
+                { key: 'triage', name: 'Triage', description: 'Medical support and field treatment' },
+                { key: 'unity', name: 'Unity', description: 'Public relations and civilian coordination' },
+                { key: 'vigil', name: 'Vigil', description: 'Surveillance and patrol operations' },
+                { key: 'vitalis', name: 'Vitalis', description: 'Research and biological studies' },
+                { key: 'admin', name: 'Admin Board', description: 'Administrative discussions and system updates' }
             ]
         };
     }
@@ -1486,12 +1685,12 @@ async function apiRequest(url, options = {}) {
                 },
                 {
                     id: 2,
-                    title: 'New Hunter Introduction',
-                    author: 'newbie123',
+                    title: 'System Security Update',
+                    author: 'witness1',
                     created_at: '2024-01-14T10:30:00Z',
                     post_count: 12,
                     signal_type: null,
-                    tags: null,
+                    tags: 'security, admin',
                     upvotes: 15,
                     downvotes: 0,
                     sticky: true,
@@ -1531,7 +1730,7 @@ async function apiRequest(url, options = {}) {
                 },
                 {
                     id: 2,
-                    author: 'hunter002',
+                    author: 'tracker007',
                     body_md: 'I can confirm this. Saw similar activity last week. We should organize a sweep.',
                     created_at: '2024-01-15T16:30:00Z',
                     upvotes: 3,
@@ -1591,7 +1790,7 @@ async function apiRequest(url, options = {}) {
                 {
                     id: 1,
                     subject: 'Re: Chicago Operations',
-                    other_participant: 'witness1',
+                    other_participant: 'hunter001',
                     last_message_at: '2024-01-15T18:00:00Z',
                     unread_count: 2
                 },
@@ -1611,13 +1810,13 @@ async function apiRequest(url, options = {}) {
             messages: [
                 {
                     id: 1,
-                    sender: 'witness1',
+                    sender: 'hunter001',
                     content: 'Good work on the Chicago report. Keep me updated on any developments.',
                     created_at: '2024-01-15T17:00:00Z'
                 },
                 {
                     id: 2,
-                    sender: currentUser?.handle_number || 'hunter001',
+                    sender: currentUser?.handle_number || 'witness1',
                     content: 'Will do. Planning another sweep tomorrow night.',
                     created_at: '2024-01-15T17:30:00Z'
                 }
@@ -1629,31 +1828,65 @@ async function apiRequest(url, options = {}) {
         return {
             rooms: [
                 { key: 'global', title: 'Global Chat' },
-                { key: 'chicago', title: 'Chicago Cell' },
-                { key: 'intel', title: 'Intelligence' },
+                { key: 'firelight', title: 'Firelight' },
+                { key: 'judgment-day', title: 'Judgment Day' },
+                { key: 'triage', title: 'Triage' },
+                { key: 'unity', title: 'Unity' },
+                { key: 'vigil', title: 'Vigil' },
+                { key: 'vitalis', title: 'Vitalis' },
                 { key: 'admin', title: 'Admin Only' }
             ]
         };
     }
     
     if (url.includes('/api/chat/rooms/') && url.includes('/messages')) {
+        const roomKey = url.split('/')[4];
         return {
-            messages: [
+            messages: chatHistory[roomKey] || []
+        };
+    }
+    
+    if (url === '/api/admin/users') {
+        if (!currentUser?.is_admin) {
+            throw new Error('Access denied');
+        }
+        return {
+            users: [
                 {
                     id: 1,
-                    author: 'witness1',
-                    body: 'All hunters report status.',
-                    created_at: '2024-01-15T20:00:00Z',
-                    room_key: 'global',
-                    image_path: null
+                    handle_number: 'witness1',
+                    creed: 'judgment-day',
+                    field_cred: 10000,
+                    thread_count: 25,
+                    post_count: 150,
+                    email: 'admin@hunternet.secure',
+                    created_at: '2023-01-01',
+                    active: 'active',
+                    is_moderator: true
                 },
                 {
                     id: 2,
-                    author: 'hunter001',
-                    body: 'Chicago sector clear. @witness1 the warehouse sweep was successful.',
-                    created_at: '2024-01-15T20:05:00Z',
-                    room_key: 'global',
-                    image_path: null
+                    handle_number: 'hunter001',
+                    creed: 'vigil',
+                    field_cred: 250,
+                    thread_count: 5,
+                    post_count: 25,
+                    email: null,
+                    created_at: '2023-06-15',
+                    active: 'active',
+                    is_moderator: false
+                },
+                {
+                    id: 3,
+                    handle_number: 'tracker007',
+                    creed: 'firelight',
+                    field_cred: 1500,
+                    thread_count: 15,
+                    post_count: 75,
+                    email: null,
+                    created_at: '2023-03-20',
+                    active: 'active',
+                    is_moderator: true
                 }
             ]
         };
@@ -1663,8 +1896,19 @@ async function apiRequest(url, options = {}) {
     if (options.method === 'POST' || options.method === 'PATCH' || options.method === 'DELETE') {
         return { success: true };
     }
-    
     return { success: true };
+}
+
+// Image modal functionality
+function openImageModal(src) {
+    const modal = document.getElementById('image-modal');
+    const modalImage = document.getElementById('modal-image');
+    modalImage.src = src;
+    modal.style.display = 'flex';
+}
+
+function closeImageModal() {
+    document.getElementById('image-modal').style.display = 'none';
 }
 
 // Field Cred calculation
@@ -1728,6 +1972,7 @@ function previewChatImage(event) {
         reader.onload = function(e) {
             preview.src = e.target.result;
             preview.classList.remove('hidden');
+            preview.onclick = () => openImageModal(e.target.result);
         };
         reader.readAsDataURL(file);
     } else {
@@ -1768,6 +2013,7 @@ function previewImage(event, previewId) {
         reader.onload = function(e) {
             preview.src = e.target.result;
             preview.classList.remove('hidden');
+            preview.onclick = () => openImageModal(e.target.result);
         };
         reader.readAsDataURL(file);
     } else {
@@ -1815,6 +2061,7 @@ function updateVoteDisplay(targetType, targetId, voteData) {
         
         upBtn.classList.toggle('active-up', voteData.user_vote === 'up');
         downBtn.classList.toggle('active-down', voteData.user_vote === 'down');
+        
         upCount.textContent = voteData.upvotes;
         downCount.textContent = voteData.downvotes;
     }
@@ -1852,6 +2099,7 @@ async function deleteContent(type, id, messageId = null) {
         }
         
         await apiRequest(endpoint, { method: 'DELETE' });
+        
         showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} deleted successfully`, 'success');
         
         // Refresh current view
@@ -1974,6 +2222,7 @@ async function handleChangePassword(event) {
                 new_password: newPassword
             })
         });
+        
         showNotification('Password updated successfully', 'success');
         event.target.reset();
     } catch (error) {
@@ -2048,6 +2297,7 @@ function logout() {
     
     document.getElementById('decoy-site').style.display = 'block';
     document.getElementById('hunter-app').style.display = 'none';
+    
     showNotification('Disconnected from Hunter-Net.', 'info');
 }
 
@@ -2068,9 +2318,9 @@ function initializeHunterNet() {
     // Calculate field cred progress
     const credProgress = calculateFieldCredProgress(currentUser.field_cred || 0);
     document.getElementById('cred-progress').style.width = `${credProgress.progress}%`;
-    document.getElementById('next-level-info').textContent = 
-        credProgress.credNeeded > 0 ? 
-        `${credProgress.credNeeded} cred needed for level ${credProgress.nextLevel}` : 
+    document.getElementById('next-level-info').textContent =
+        credProgress.credNeeded > 0 ?
+        `${credProgress.credNeeded} cred needed for level ${credProgress.nextLevel}` :
         'Maximum level reached!';
     
     // Show admin/moderator features
@@ -2437,45 +2687,7 @@ async function loadAdminUsers() {
     
     try {
         const data = await apiRequest('/api/admin/users');
-        displayAdminUsers(data.users || [
-            {
-                id: 1,
-                handle_number: 'witness1',
-                creed: 'judgment-day',
-                field_cred: 10000,
-                thread_count: 25,
-                post_count: 150,
-                email: 'admin@hunternet.secure',
-                created_at: '2023-01-01',
-                active: 'active',
-                is_moderator: true
-            },
-            {
-                id: 2,
-                handle_number: 'hunter001',
-                creed: 'vigil',
-                field_cred: 250,
-                thread_count: 5,
-                post_count: 25,
-                email: null,
-                created_at: '2023-06-15',
-                active: 'active',
-                is_moderator: false
-            },
-            {
-                id: 3,
-                handle_number: 'deleted_user',
-                creed: 'firelight',
-                field_cred: 500,
-                thread_count: 2,
-                post_count: 8,
-                email: null,
-                created_at: '2023-05-01',
-                active: 'deleted',
-                is_moderator: false,
-                deletion_reason: 'Violation of community guidelines'
-            }
-        ]);
+        displayAdminUsers(data.users);
     } catch (error) {
         document.getElementById('admin-users-container').innerHTML = `
             <div class="error">Failed to load users: ${error.message}</div>
@@ -2527,6 +2739,7 @@ async function adjustFieldCred(userId) {
                     reason: reason || 'Admin adjustment'
                 })
             });
+            
             showNotification('Field cred updated successfully', 'success');
             loadAdminUsers();
         } catch (error) {
@@ -2541,6 +2754,7 @@ async function toggleModerator(userId, makeMod) {
             method: 'PATCH',
             body: JSON.stringify({ is_moderator: makeMod })
         });
+        
         showNotification(`User ${makeMod ? 'promoted to' : 'removed from'} moderator`, 'success');
         loadAdminUsers();
     } catch (error) {
@@ -2556,6 +2770,7 @@ async function deleteUser(userId) {
                 method: 'DELETE',
                 body: JSON.stringify({ reason })
             });
+            
             showNotification('User deleted successfully', 'success');
             loadAdminUsers();
         } catch (error) {
@@ -2584,6 +2799,7 @@ async function handleServerMessage(event) {
                 type: formData.get('server-msg-type')
             })
         });
+        
         showNotification('Server message sent to all users', 'success');
         showServerMessage(formData.get('server-msg-content'), formData.get('server-msg-type'));
         event.target.reset();
@@ -2648,7 +2864,7 @@ async function viewPrivateChatAdmin(conversationId) {
         const messages = (data.messages || [
             { created_at: '2024-01-15T17:00:00Z', sender: 'witness1', content: 'Good work on the Chicago report.' },
             { created_at: '2024-01-15T17:30:00Z', sender: 'hunter001', content: 'Thank you. Planning another sweep tomorrow.' }
-        ]).map(msg =>
+        ]).map(msg => 
             `[${new Date(msg.created_at).toLocaleString()}] ${msg.sender}: ${msg.content}`
         ).join('\n');
         
@@ -2674,6 +2890,7 @@ function exportSystemData() {
     const data = {
         storage: hunterStorage.data,
         chatMessages: chatMessages,
+        chatHistory: chatHistory,
         timestamp: new Date().toISOString(),
         user: currentUser.handle_number
     };
@@ -2685,6 +2902,7 @@ function exportSystemData() {
     a.download = `hunternet-export-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
+    
     showNotification('System data exported', 'success');
 }
 
@@ -2700,12 +2918,28 @@ async function loadBoards() {
 
 function displayBoards(boards) {
     const container = document.getElementById('boards-container');
-    container.innerHTML = boards.map(board => `
-        <div class="board-card" onclick="loadThreads('${board.key}', '${board.name}')">
-            <div class="board-title">${board.name}</div>
-            <div class="board-description">${board.description}</div>
-        </div>
-    `).join('');
+    container.innerHTML = boards.map(board => {
+        // Check if user has access to this board
+        let hasAccess = true;
+        if (board.key === 'admin' && !currentUser.is_admin) {
+            hasAccess = false;
+        }
+        
+        const isUserBoard = board.key === 'general' || board.key === currentUser.creed || (board.key === 'admin' && currentUser.is_admin);
+        
+        return `
+            <div class="board-card ${isUserBoard ? 'user-board' : ''}" 
+                 onclick="loadThreads('${board.key}', '${board.name}')"
+                 style="${!hasAccess ? 'opacity: 0.5; pointer-events: none;' : ''}">
+                <div class="board-title">
+                    ${board.name}
+                    ${board.key === currentUser.creed ? ' <span style="color: #44ff44; font-size: 0.8em;">[YOUR CREED]</span>' : ''}
+                    ${currentUser.is_admin && board.key === 'admin' ? ' <span style="color: #ffaa00; font-size: 0.8em;">[ADMIN]</span>' : ''}
+                </div>
+                <div class="board-description">${board.description}</div>
+            </div>
+        `;
+    }).join('');
 }
 
 async function loadThreads(boardKey, boardName) {
@@ -2796,7 +3030,7 @@ function displayThread(thread, posts) {
                 ` : ''}
             </div>
             <div class="post-body">${thread.body_md}</div>
-            ${thread.image_path ? `<img src="${thread.image_path}" class="image-preview">` : ''}
+            ${thread.image_path ? `<img src="${thread.image_path}" class="image-preview" onclick="openImageModal('${thread.image_path}')">` : ''}
             ${createVoteControls('thread', thread.id, threadVoteData)}
             ${canDelete ? `<button class="delete-btn" onclick="deleteContent('thread', ${thread.id})">×</button>` : ''}
         </div>
@@ -2826,7 +3060,7 @@ function displayThread(thread, posts) {
                     <span class="post-time">${new Date(post.created_at).toLocaleString()}</span>
                 </div>
                 <div class="post-body">${post.body_md}</div>
-                ${post.image_path ? `<img src="${post.image_path}" class="image-preview">` : ''}
+                ${post.image_path ? `<img src="${post.image_path}" class="image-preview" onclick="openImageModal('${post.image_path}')">` : ''}
                 ${createVoteControls('post', post.id, postVoteData)}
                 ${canDeletePost ? `<button class="delete-btn" onclick="deleteContent('post', ${post.id})">×</button>` : ''}
             </div>
@@ -2867,8 +3101,8 @@ async function handleNewThread(event) {
     try {
         showNotification('Creating thread...', 'info');
         let imagePath = null;
-        const imageFile = document.getElementById('thread-image').files[0];
         
+        const imageFile = document.getElementById('thread-image').files[0];
         if (imageFile) {
             showNotification('Uploading image...', 'info');
             // Mock image upload
@@ -2903,8 +3137,8 @@ async function handleNewPost(event) {
     try {
         showNotification('Posting reply...', 'info');
         let imagePath = null;
-        const imageFile = document.getElementById('post-image').files[0];
         
+        const imageFile = document.getElementById('post-image').files[0];
         if (imageFile) {
             showNotification('Uploading image...', 'info');
             // Mock image upload
@@ -2981,15 +3215,29 @@ async function loadChatRooms() {
 
 function displayChatRooms(rooms) {
     const container = document.getElementById('chat-rooms-list');
-    container.innerHTML = rooms.map(room => `
-        <div class="chat-room ${room.key === currentChatRoom ? 'active' : ''}"
-             onclick="joinChatRoom('${room.key}')">
-            ${room.title}
-            ${currentUser.is_moderator && room.moderators && 
-              room.moderators.includes(currentUser.handle_number) ?
-                '<span style="color: #4444ff;">[MOD]</span>' : ''}
-        </div>
-    `).join('');
+    container.innerHTML = rooms.map(room => {
+        // Check if user has access to this room
+        let hasAccess = true;
+        if (room.key === 'admin' && !currentUser.is_admin) {
+            hasAccess = false;
+        }
+        if (room.key !== 'global' && room.key !== 'admin' && currentUser.creed !== room.key) {
+            // Allow access to affiliation rooms if user belongs to that creed
+            // But still show all rooms for now, just highlight user's own
+        }
+        
+        const isUserRoom = room.key === 'global' || room.key === currentUser.creed || (room.key === 'admin' && currentUser.is_admin);
+        
+        return `
+            <div class="chat-room ${room.key === currentChatRoom ? 'active' : ''} ${isUserRoom ? 'user-room' : ''}"
+                 onclick="joinChatRoom('${room.key}')" 
+                 style="${!hasAccess ? 'opacity: 0.5; pointer-events: none;' : ''}">
+                ${room.title}
+                ${room.key === currentUser.creed ? '<span style="color: #44ff44;">[YOUR CREED]</span>' : ''}
+                ${currentUser.is_admin && room.key === 'admin' ? '<span style="color: #ffaa00;">[ADMIN]</span>' : ''}
+            </div>
+        `;
+    }).join('');
 }
 
 function joinChatRoom(roomKey) {
@@ -3007,13 +3255,14 @@ function joinChatRoom(roomKey) {
 
 async function loadChatMessages(roomKey) {
     try {
-        // Try to load from cache first
-        if (chatMessages[roomKey] && chatMessages[roomKey].length > 0) {
-            displayCachedMessages(chatMessages[roomKey]);
+        // Load from persistent history
+        if (chatHistory[roomKey]) {
+            chatMessages[roomKey] = [...chatHistory[roomKey]];
+            displayCachedMessages(chatHistory[roomKey]);
             return;
         }
         
-        // Load from server
+        // Fallback to API if no history
         const data = await apiRequest(`/api/chat/rooms/${roomKey}/messages?limit=50`);
         chatMessages[roomKey] = data.messages;
         displayCachedMessages(data.messages);
@@ -3027,7 +3276,7 @@ function displayCachedMessages(messages) {
     const container = document.getElementById('chat-messages');
     container.innerHTML = messages.map(message => {
         const canDelete = currentUser.is_admin || message.author === currentUser.handle_number ||
-                         (currentUser.is_moderator && isModeratorOfRoom(currentChatRoom));
+            (currentUser.is_moderator && isModeratorOfRoom(currentChatRoom));
         const isMention = message.body && message.body.includes(`@${currentUser.handle_number}`);
         
         return `
@@ -3035,7 +3284,7 @@ function displayCachedMessages(messages) {
                 <span class="chat-author" onclick="showMemberProfile('${message.author}')">${message.author}:</span>
                 ${formatChatMessage(message.body)}
                 <span class="chat-time">${new Date(message.created_at).toLocaleTimeString()}</span>
-                ${message.image_path ? `<br><img src="${message.image_path}" class="image-preview">` : ''}
+                ${message.image_path ? `<br><img src="${message.image_path}" class="image-preview" onclick="openImageModal('${message.image_path}')">` : ''}
                 ${canDelete ? `<button class="chat-delete-btn" onclick="deleteContent('message', ${message.id})">×</button>` : ''}
             </div>
         `;
@@ -3046,7 +3295,7 @@ function displayCachedMessages(messages) {
 function displayChatMessage(message) {
     const container = document.getElementById('chat-messages');
     const canDelete = currentUser.is_admin || message.author === currentUser.handle_number ||
-                     (currentUser.is_moderator && isModeratorOfRoom(currentChatRoom));
+        (currentUser.is_moderator && isModeratorOfRoom(currentChatRoom));
     const isMention = message.body && message.body.includes(`@${currentUser.handle_number}`);
     
     const messageElement = document.createElement('div');
@@ -3055,7 +3304,7 @@ function displayChatMessage(message) {
         <span class="chat-author" onclick="showMemberProfile('${message.author}')">${message.author}:</span>
         ${formatChatMessage(message.body)}
         <span class="chat-time">${new Date(message.created_at).toLocaleTimeString()}</span>
-        ${message.image_path ? `<br><img src="${message.image_path}" class="image-preview">` : ''}
+        ${message.image_path ? `<br><img src="${message.image_path}" class="image-preview" onclick="openImageModal('${message.image_path}')">` : ''}
         ${canDelete ? `<button class="chat-delete-btn" onclick="deleteContent('message', ${message.id})">×</button>` : ''}
     `;
     
@@ -3131,7 +3380,7 @@ async function sendChatMessage() {
             imagePath = '/uploads/chat-image-' + Date.now() + '.jpg';
         }
         
-        // Mock sending message
+        // Mock sending message and add to history
         const mockMessage = {
             id: Date.now(),
             author: currentUser.handle_number,
@@ -3140,6 +3389,12 @@ async function sendChatMessage() {
             room_key: currentChatRoom,
             image_path: imagePath
         };
+        
+        // Add to persistent history
+        if (!chatHistory[currentChatRoom]) {
+            chatHistory[currentChatRoom] = [];
+        }
+        chatHistory[currentChatRoom].push(mockMessage);
         
         displayChatMessage(mockMessage);
         
@@ -3167,15 +3422,21 @@ function handleChatKeypress(event) {
 document.addEventListener('DOMContentLoaded', async () => {
     showNotification('Anonymous Liberty portal online', 'success');
     
-    // Check if already logged in (for demo, we'll skip this)
-    console.log('Hunter-Net system initialized');
-    
     // Close profile modal when clicking outside
     document.getElementById('profile-modal').addEventListener('click', (e) => {
         if (e.target === document.getElementById('profile-modal')) {
             closeProfileModal();
         }
     });
+    
+    // Close image modal when clicking outside
+    document.getElementById('image-modal').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('image-modal')) {
+            closeImageModal();
+        }
+    });
+    
+    console.log('Hunter-Net system initialized');
 });
 </script>
 </body>
