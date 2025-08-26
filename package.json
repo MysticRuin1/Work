@@ -1,5 +1,5 @@
 {
-  "name": "hunter-net",
+  "name": "hunternet-app",
   "version": "1.0.0",
   "description": "Hunter-Net Forum Application",
   "main": "server.js",
@@ -23,6 +23,6 @@
     "nodemon": "^3.0.2"
   },
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=18.0.0"
   }
 }
