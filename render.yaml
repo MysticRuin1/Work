@@ -9,7 +9,7 @@ services:
     name: hunternet-app
     env: node
     plan: free
-    buildCommand: npm ci --only=production
+    buildCommand: npm install --production
     startCommand: node server.js
     autoDeploy: true
     healthCheckPath: /healthz
