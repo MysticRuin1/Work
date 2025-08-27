@@ -314,31 +314,64 @@ VALUES ('witness', 1, 'witness1', '$2b$12$LQv3c1yqBwEHbPVCdEGI3ui.8w8w.7pBz4VhJs
 `
 },
 {
-name: '004_fix_missing_tables',
+name: '004_fix_private_messages_schema',
 sql: `
--- Ensure private chat tables exist (in case they weren't created properly)
-CREATE TABLE IF NOT EXISTS private_chats (
-id SERIAL PRIMARY KEY,
-user1_id INT REFERENCES users(id) ON DELETE CASCADE,
-user2_id INT REFERENCES users(id) ON DELETE CASCADE,
-created_at TIMESTAMPTZ DEFAULT now(),
-UNIQUE(user1_id, user2_id)
-);
-CREATE TABLE IF NOT EXISTS private_messages (
-id SERIAL PRIMARY KEY,
-chat_id INT REFERENCES private_chats(id) ON DELETE CASCADE,
-sender_id INT REFERENCES users(id) ON DELETE CASCADE,
-body TEXT NOT NULL,
-image_path TEXT,
-created_at TIMESTAMPTZ DEFAULT now()
-);
--- Create uploads directory trigger/function to ensure it exists
-CREATE OR REPLACE FUNCTION ensure_uploads_directory() RETURNS void AS $$
+-- First, check if private_messages table exists and fix its schema
+DO $$
 BEGIN
--- This is a placeholder - actual directory creation happens in Node.js
-RAISE NOTICE 'Uploads directory should be created by Node.js application';
-END;
-$$ LANGUAGE plpgsql;
+    -- Check if private_messages table exists
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'private_messages') THEN
+        -- Check if chat_id column exists
+        IF NOT EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'private_messages' AND column_name = 'chat_id') THEN
+            -- Drop and recreate the table with correct schema
+            DROP TABLE IF EXISTS private_messages CASCADE;
+        END IF;
+    END IF;
+    
+    -- Ensure private_chats table exists with correct schema
+    CREATE TABLE IF NOT EXISTS private_chats (
+        id SERIAL PRIMARY KEY,
+        user1_id INT REFERENCES users(id) ON DELETE CASCADE,
+        user2_id INT REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ DEFAULT now(),
+        UNIQUE(user1_id, user2_id)
+    );
+    
+    -- Create private_messages table with correct schema
+    CREATE TABLE IF NOT EXISTS private_messages (
+        id SERIAL PRIMARY KEY,
+        chat_id INT REFERENCES private_chats(id) ON DELETE CASCADE,
+        sender_id INT REFERENCES users(id) ON DELETE CASCADE,
+        body TEXT NOT NULL,
+        image_path TEXT,
+        created_at TIMESTAMPTZ DEFAULT now()
+    );
+END
+$$;
+`
+},
+{
+name: '005_verify_and_fix_schema',
+sql: `
+-- Additional verification and cleanup
+DO $$
+BEGIN
+    -- Log current table structure for debugging
+    RAISE NOTICE 'Verifying private chat tables schema...';
+    
+    -- Ensure all required columns exist in private_chats
+    IF NOT EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'private_chats' AND column_name = 'user1_id') THEN
+        RAISE EXCEPTION 'private_chats table missing user1_id column';
+    END IF;
+    
+    -- Ensure all required columns exist in private_messages
+    IF NOT EXISTS (SELECT FROM information_schema.columns WHERE table_name = 'private_messages' AND column_name = 'chat_id') THEN
+        RAISE EXCEPTION 'private_messages table missing chat_id column';
+    END IF;
+    
+    RAISE NOTICE 'Private chat schema verification completed successfully';
+END
+$$;
 `
 }
 ];
