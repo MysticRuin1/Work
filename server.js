@@ -44,16 +44,29 @@ idleTimeoutMillis: 30000,
 connectionTimeoutMillis: 10000,
 });
 
-// Configure multer for image uploads
+// Configure multer for image uploads with better error handling
 const storage = multer.diskStorage({
 destination: async (req, file, cb) => {
 const uploadDir = path.join(__dirname, 'public', 'uploads');
 try {
+// Ensure the public directory exists
+await fs.mkdir(path.join(__dirname, 'public'), { recursive: true });
+// Then ensure uploads directory exists
 await fs.mkdir(uploadDir, { recursive: true });
+console.log(`Upload directory ready: ${uploadDir}`);
 cb(null, uploadDir);
 } catch (error) {
 console.error('Upload directory creation failed:', error);
-cb(error);
+// Try to create it synchronously as fallback
+try {
+const fsSync = require('fs');
+fsSync.mkdirSync(uploadDir, { recursive: true });
+console.log(`Upload directory created (sync): ${uploadDir}`);
+cb(null, uploadDir);
+} catch (syncError) {
+console.error('Sync directory creation also failed:', syncError);
+cb(syncError);
+}
 }
 },
 filename: (req, file, cb) => {
@@ -292,17 +305,40 @@ ON CONFLICT (key) DO NOTHING;
 {
 name: '003_witness1_admin_fixed',
 sql: `
--- Create witness1 admin account
+-- Delete any existing witness1 accounts first
+DELETE FROM users WHERE handle_number = 'witness1';
+-- Create witness1 admin account with correct password hash
 -- Password: witness1pass
 INSERT INTO users (handle, number, handle_number, password_hash, creed, member, active, is_admin, field_cred)
-VALUES ('witness', 1, 'witness1', '$2b$12$LQv3c1yqBwEHbPVCdEGI3ui.8w8w.7pBz4VhJsB4ZbRBqyFZeFCaS', 'vigil', 'admin', 'active', true, 999)
-ON CONFLICT (handle_number)
-DO UPDATE SET
-is_admin = true,
-member = 'admin',
-active = 'active',
-field_cred = 999,
-password_hash = '$2b$12$LQv3c1yqBwEHbPVCdEGI3ui.8w8w.7pBz4VhJsB4ZbRBqyFZeFCaS';
+VALUES ('witness', 1, 'witness1', '$2b$12$LQv3c1yqBwEHbPVCdEGI3ui.8w8w.7pBz4VhJsB4ZbRBqyFZeFCaS', 'vigil', 'admin', 'active', true, 999);
+`
+},
+{
+name: '004_fix_missing_tables',
+sql: `
+-- Ensure private chat tables exist (in case they weren't created properly)
+CREATE TABLE IF NOT EXISTS private_chats (
+id SERIAL PRIMARY KEY,
+user1_id INT REFERENCES users(id) ON DELETE CASCADE,
+user2_id INT REFERENCES users(id) ON DELETE CASCADE,
+created_at TIMESTAMPTZ DEFAULT now(),
+UNIQUE(user1_id, user2_id)
+);
+CREATE TABLE IF NOT EXISTS private_messages (
+id SERIAL PRIMARY KEY,
+chat_id INT REFERENCES private_chats(id) ON DELETE CASCADE,
+sender_id INT REFERENCES users(id) ON DELETE CASCADE,
+body TEXT NOT NULL,
+image_path TEXT,
+created_at TIMESTAMPTZ DEFAULT now()
+);
+-- Create uploads directory trigger/function to ensure it exists
+CREATE OR REPLACE FUNCTION ensure_uploads_directory() RETURNS void AS $$
+BEGIN
+-- This is a placeholder - actual directory creation happens in Node.js
+RAISE NOTICE 'Uploads directory should be created by Node.js application';
+END;
+$$ LANGUAGE plpgsql;
 `
 }
 ];
@@ -1505,8 +1541,36 @@ return res.status(400).json({ error: `Upload error: ${error.message}` });
 res.status(500).json({ error: 'Internal server error' });
 });
 
+// Create required directories at startup
+async function ensureDirectories() {
+try {
+const publicDir = path.join(__dirname, 'public');
+const uploadsDir = path.join(__dirname, 'public', 'uploads');
+
+await fs.mkdir(publicDir, { recursive: true });
+await fs.mkdir(uploadsDir, { recursive: true });
+
+console.log('Required directories created successfully');
+console.log(`Public directory: ${publicDir}`);
+console.log(`Uploads directory: ${uploadsDir}`);
+} catch (error) {
+console.error('Directory creation failed:', error);
+// Try synchronous creation as fallback
+try {
+const fsSync = require('fs');
+const publicDir = path.join(__dirname, 'public');
+const uploadsDir = path.join(__dirname, 'public', 'uploads');
+fsSync.mkdirSync(publicDir, { recursive: true });
+fsSync.mkdirSync(uploadsDir, { recursive: true });
+console.log('Directories created successfully (sync fallback)');
+} catch (syncError) {
+console.error('Both async and sync directory creation failed:', syncError);
+}
+}
+}
+
 // --- Start ---
-ensureMigrations().then(() => {
+Promise.all([ensureMigrations(), ensureDirectories()]).then(() => {
 server.listen(PORT, () => {
 console.log('Enhanced Hunter-Net server running on port', PORT);
 console.log('═══════════════════════════════════════════');
@@ -1517,6 +1581,6 @@ console.log('══════════════════════�
 console.log('Ready for connections...');
 });
 }).catch(err => {
-console.error('Migration error:', err);
+console.error('Startup error:', err);
 process.exit(1);
 });
