@@ -1396,63 +1396,63 @@ console.error('API Request failed:', error);
 throw error;
 }
 }
-// Fixed upload helper with better error handling
-async function uploadImage(file) {
-if (!file) return null;
-// Validate file
-if (file.size > 5 * 1024 * 1024) {
-throw new Error('Image too large. Maximum 5MB allowed.');
+// Replace the uploadImage function
+async function uploadImage(file) { 
+    if (!file) return null; 
+    if (file.size > 5 * 1024 * 1024) throw new Error('Image too large. Maximum 5MB allowed.'); 
+    if (!file.type.startsWith('image/')) throw new Error('Only image files are allowed.'); 
+     
+    const formData = new FormData(); 
+    formData.append('image', file); 
+     
+    const response = await fetch('/api/upload', { 
+        method: 'POST', 
+        credentials: 'include', 
+        body: formData 
+    }); 
+     
+    if (!response.ok) { 
+        const errorData = await response.json().catch(() => ({})); 
+        throw new Error(errorData.error || `Upload failed: ${response.status}`); 
+    } 
+     
+    const data = await response.json(); 
+    return data.image_path; 
 }
-if (!file.type.startsWith('image/')) {
-throw new Error('Only image files are allowed.');
-}
-const formData = new FormData();
-formData.append('image', file);
-try {
-const response = await fetch('/api/upload', {
-method: 'POST',
-credentials: 'include',
-body: formData
-});
-if (!response.ok) {
-const errorData = await response.json().catch(() => ({}));
-throw new Error(errorData.error || `Upload failed: ${response.status}`);
-}
-const data = await response.json();
-return data.image_path;
-} catch (error) {
-console.error('Upload error:', error);
-throw error;
-}
-}
-// Image preview
-function previewImage(event, previewId) {
-const file = event.target.files[0];
-const preview = document.getElementById(previewId);
-if (file) {
-// Validate file size (5MB limit)
-if (file.size > 5 * 1024 * 1024) {
-showNotification('Image too large. Maximum 5MB allowed.', 'error');
-event.target.value = '';
-preview.classList.add('hidden');
-return;
-}
-// Validate file type
-if (!file.type.startsWith('image/')) {
-showNotification('Only image files are allowed.', 'error');
-event.target.value = '';
-preview.classList.add('hidden');
-return;
-}
-const reader = new FileReader();
-reader.onload = function(e) {
-preview.src = e.target.result;
-preview.classList.remove('hidden');
-};
-reader.readAsDataURL(file);
-} else {
-preview.classList.add('hidden');
-}
+// Replace the previewImage function
+function previewImage(event, previewId) { 
+    const file = event.target.files[0]; 
+    const preview = document.getElementById(previewId); 
+     
+    if (!file) { 
+        preview.classList.add('hidden'); 
+        return; 
+    } 
+     
+    if (file.size > 5 * 1024 * 1024) { 
+        showNotification('Image too large. Maximum 5MB allowed.', 'error'); 
+        event.target.value = ''; 
+        preview.classList.add('hidden'); 
+        return; 
+    } 
+     
+    if (!file.type.startsWith('image/')) { 
+        showNotification('Only image files are allowed.', 'error'); 
+        event.target.value = ''; 
+        preview.classList.add('hidden'); 
+        return; 
+    } 
+     
+    const reader = new FileReader(); 
+    reader.onload = e => { 
+        preview.src = e.target.result; 
+        preview.classList.remove('hidden'); 
+    }; 
+    reader.onerror = () => { 
+        showNotification('Error reading image file.', 'error'); 
+        preview.classList.add('hidden'); 
+    }; 
+    reader.readAsDataURL(file); 
 }
 // Voting system
 async function vote(targetType, targetId, voteType) {
