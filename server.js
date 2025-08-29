@@ -535,9 +535,8 @@ res.status(500).json({ error: 'Login failed' });
 app.get('/api/me', authRequired, async (req, res) => {
 try {
 const { rows: [user] } = await query(
-'SELECT handle_number, field_cred, is_admin, creed FROM users WHERE id = $1
-AND active != \'deleted\'',
-[req.user.id]
+'SELECT handle_number, field_cred, is_admin, creed FROM users WHERE id = $1 AND active != $2',
+[req.user.id, 'deleted']
 );
 if (!user) {
 return res.status(404).json({ error: 'User not found' });
