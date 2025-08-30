@@ -320,19 +320,21 @@ ON CONFLICT (key) DO NOTHING;
 `
 },
 {
-name: '003_reset_users_and_create_witness1',
+name: '004_fix_witness1_password',
 sql: async () => {
-// Generate fresh password hash EVERY time this migration runs
+// Generate fresh password hash for witness1
 const password_hash = await bcrypt.hash('witness1pass', 12);
-console.log(`Generated witness1 password hash: ${password_hash.substring(0, 20)}...`);
+console.log(`Fixing witness1 password with hash: ${password_hash.substring(0, 20)}...`);
 return `
--- Remove ALL users first
-DELETE FROM users;
--- Reset user number sequence to start from 1
-SELECT setval('user_number_seq', 1, false);
--- Create fresh witness1 admin account with proper password hash
+-- Update or insert witness1 with correct password
+DELETE FROM users WHERE handle_number = 'witness1';
 INSERT INTO users (handle, number, handle_number, password_hash, creed, member, active, is_admin, field_cred)
-VALUES ('witness', 1, 'witness1', '${password_hash}', 'vigil', 'admin', 'active', true, 999);
+VALUES ('witness', 1, 'witness1', '${password_hash}', 'vigil', 'admin', 'active', true, 999)
+ON CONFLICT (handle_number) DO UPDATE SET 
+  password_hash = EXCLUDED.password_hash,
+  is_admin = true,
+  active = 'active',
+  field_cred = 999;
 `;
 }
 }
