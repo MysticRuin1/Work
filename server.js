@@ -29,6 +29,7 @@ console.warn('[Config] Missing variables:', errs.join(', '));
 }
 }
 CHECK_ENV();
+
 const PORT = process.env.PORT || 10000;
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
 
@@ -163,6 +164,7 @@ case 'post': credChange = -1; break;
 case 'message': credChange = -1; break;
 }
 }
+
 if (credChange !== 0) {
 const { rows: [user] } = await query(`
 UPDATE users
@@ -170,6 +172,7 @@ SET field_cred = GREATEST(0, field_cred + $1)
 WHERE id = $2
 RETURNING field_cred, handle_number
 `, [credChange, targetUserId]);
+
 if (user) {
 console.log(`Field Cred: ${user.handle_number} ${credChange > 0 ? '+' : ''}${credChange} (${voteType}vote on ${targetType}) -> ${user.field_cred}`);
 }
@@ -190,8 +193,10 @@ name text UNIQUE,
 run_at timestamptz DEFAULT now()
 );
 `);
+
 const { rows } = await query(`SELECT name FROM schema_migrations`);
 const ran = new Set(rows.map(r => r.name));
+
 const steps = [
 {
 name: '001_init',
@@ -213,12 +218,14 @@ is_admin BOOLEAN DEFAULT false,
 deleted_at TIMESTAMPTZ,
 deletion_reason TEXT
 );
+
 CREATE TABLE IF NOT EXISTS chat_rooms (
 id SERIAL PRIMARY KEY,
 key TEXT UNIQUE NOT NULL,
 title TEXT NOT NULL,
 created_at TIMESTAMPTZ DEFAULT now()
 );
+
 CREATE TABLE IF NOT EXISTS messages (
 id SERIAL PRIMARY KEY,
 room_id INT REFERENCES chat_rooms(id) ON DELETE CASCADE,
@@ -229,6 +236,7 @@ upvotes INT DEFAULT 0,
 downvotes INT DEFAULT 0,
 created_at TIMESTAMPTZ DEFAULT now()
 );
+
 CREATE TABLE IF NOT EXISTS boards (
 id SERIAL PRIMARY KEY,
 name TEXT,
@@ -236,6 +244,7 @@ description TEXT,
 key TEXT UNIQUE NOT NULL,
 created_at TIMESTAMPTZ DEFAULT now()
 );
+
 CREATE TABLE IF NOT EXISTS threads (
 id SERIAL PRIMARY KEY,
 board_id INT REFERENCES boards(id) ON DELETE CASCADE,
@@ -253,6 +262,7 @@ downvotes INT DEFAULT 0,
 created_at TIMESTAMPTZ DEFAULT now(),
 updated_at TIMESTAMPTZ DEFAULT now()
 );
+
 CREATE TABLE IF NOT EXISTS posts (
 id SERIAL PRIMARY KEY,
 thread_id INT REFERENCES threads(id) ON DELETE CASCADE,
@@ -263,6 +273,7 @@ upvotes INT DEFAULT 0,
 downvotes INT DEFAULT 0,
 created_at TIMESTAMPTZ DEFAULT now()
 );
+
 CREATE TABLE IF NOT EXISTS votes (
 id SERIAL PRIMARY KEY,
 voter_id INT REFERENCES users(id) ON DELETE CASCADE,
@@ -272,6 +283,7 @@ vote_type TEXT NOT NULL CHECK (vote_type IN ('up', 'down')),
 created_at TIMESTAMPTZ DEFAULT now(),
 UNIQUE(voter_id, target_type, target_id)
 );
+
 CREATE TABLE IF NOT EXISTS private_chats (
 id SERIAL PRIMARY KEY,
 user1_id INT REFERENCES users(id) ON DELETE CASCADE,
@@ -279,6 +291,7 @@ user2_id INT REFERENCES users(id) ON DELETE CASCADE,
 created_at TIMESTAMPTZ DEFAULT now(),
 UNIQUE(user1_id, user2_id)
 );
+
 CREATE TABLE IF NOT EXISTS private_messages (
 id SERIAL PRIMARY KEY,
 chat_id INT REFERENCES private_chats(id) ON DELETE CASCADE,
@@ -297,6 +310,7 @@ INSERT INTO chat_rooms (key, title) VALUES
 ('tactical', 'Tactical Discussion'),
 ('social', 'Social Hour')
 ON CONFLICT (key) DO NOTHING;
+
 INSERT INTO boards (name, description, key) VALUES
 ('General Discussion', 'Open discussion for all hunters', 'general'),
 ('Creature Sightings', 'Report and discuss supernatural encounters', 'sightings'),
@@ -307,20 +321,11 @@ ON CONFLICT (key) DO NOTHING;
 },
 {
 name: '003_reset_users_and_create_witness1',
-isAsync: true // Flag to indicate this step needs async handling
-}
-];
-
-for (const step of steps) {
-if (!ran.has(step.name)) {
-console.log(`Running migration: ${step.name}`);
-
-if (step.name === '003_reset_users_and_create_witness1') {
-// Handle the witness1 account creation with proper async password hashing
+sql: async () => {
+// Generate fresh password hash EVERY time this migration runs
 const password_hash = await bcrypt.hash('witness1pass', 12);
-console.log(`Generated password hash for witness1: ${password_hash.substring(0, 29)}...`);
-
-const sql = `
+console.log(`Generated witness1 password hash: ${password_hash.substring(0, 20)}...`);
+return `
 -- Remove ALL users first
 DELETE FROM users;
 -- Reset user number sequence to start from 1
@@ -329,20 +334,23 @@ SELECT setval('user_number_seq', 1, false);
 INSERT INTO users (handle, number, handle_number, password_hash, creed, member, active, is_admin, field_cred)
 VALUES ('witness', 1, 'witness1', '${password_hash}', 'vigil', 'admin', 'active', true, 999);
 `;
-await query(sql);
-} else {
-// Handle regular SQL migrations
+}
+}
+];
+
+for (const step of steps) {
+if (!ran.has(step.name)) {
+console.log(`Running migration: ${step.name}`);
 let sql = step.sql;
 if (typeof sql === 'function') {
 sql = await sql();
 }
 await query(sql);
-}
-
 await query(`INSERT INTO schema_migrations(name) VALUES($1)`, [step.name]);
 console.log(`Completed migration: ${step.name}`);
 }
 }
+
 console.log('Migrations completed successfully');
 console.log('Witness1 account ready - Handle: witness1, Password: witness1pass');
 } catch (error) {
@@ -352,6 +360,7 @@ throw error;
 }
 
 // --- API Routes ---
+
 // Upload image - Fixed for proper error handling
 app.post('/api/upload', authRequired, (req, res) => {
 upload.single('image')(req, res, (err) => {
@@ -365,9 +374,11 @@ return res.status(400).json({ error: `Upload error: ${err.message}` });
 }
 return res.status(400).json({ error: err.message });
 }
+
 if (!req.file) {
 return res.status(400).json({ error: 'No image file provided' });
 }
+
 const imagePath = `/uploads/${req.file.filename}`;
 console.log(`Image uploaded: ${imagePath} by ${req.user.handle_number}`);
 res.json({
@@ -382,12 +393,14 @@ size: req.file.size
 app.post('/api/vote', authRequired, async (req, res) => {
 try {
 const { target_type, target_id, vote_type } = req.body;
+
 if (!['thread', 'post', 'message'].includes(target_type)) {
 return res.status(400).json({ error: 'Invalid target type' });
 }
 if (!['up', 'down'].includes(vote_type)) {
 return res.status(400).json({ error: 'Invalid vote type' });
 }
+
 // Get target author
 let authorQuery;
 let tableName;
@@ -405,14 +418,17 @@ authorQuery = 'SELECT author_id FROM messages WHERE id = $1';
 tableName = 'messages';
 break;
 }
+
 const { rows: [targetData] } = await query(authorQuery, [target_id]);
 if (!targetData) {
 return res.status(404).json({ error: 'Target not found' });
 }
+
 // Can't vote on your own content
 if (targetData.author_id === req.user.id) {
 return res.status(400).json({ error: 'Cannot vote on your own content' });
 }
+
 // Insert or update vote
 await query(`
 INSERT INTO votes (voter_id, target_type, target_id, vote_type)
@@ -420,6 +436,7 @@ VALUES ($1, $2, $3, $4)
 ON CONFLICT (voter_id, target_type, target_id)
 DO UPDATE SET vote_type = $4, created_at = now()
 `, [req.user.id, target_type, target_id, vote_type]);
+
 // Update vote counts
 const { rows: [voteCounts] } = await query(`
 SELECT
@@ -428,11 +445,14 @@ COUNT(CASE WHEN vote_type = 'down' THEN 1 END) as downvotes
 FROM votes
 WHERE target_type = $1 AND target_id = $2
 `, [target_type, target_id]);
+
 // Update the target table with new vote counts
 const updateQuery = `UPDATE ${tableName} SET upvotes = $1, downvotes = $2 WHERE id = $3`;
 await query(updateQuery, [voteCounts.upvotes, voteCounts.downvotes, target_id]);
+
 // Update field cred for the content author
 await updateFieldCredForVote(targetData.author_id, vote_type, target_type);
+
 res.json({
 upvotes: parseInt(voteCounts.upvotes),
 downvotes: parseInt(voteCounts.downvotes)
@@ -443,46 +463,56 @@ res.status(500).json({ error: 'Failed to vote' });
 }
 });
 
-// Register - Fixed to ensure proper handle generation
+// Register - Fixed to ensure proper handle generation and password storage
 app.post('/api/register', async (req, res) => {
 try {
 const { handle, email, password, creed } = req.body;
+
 if (!handle || !password) {
 return res.status(400).json({ error: 'Handle and password required' });
 }
+
 if (password.length < 8) {
 return res.status(400).json({ error: 'Password must be at least 8 characters' });
 }
+
 // Clean handle input
 const cleanHandle = handle.toLowerCase().trim();
 if (cleanHandle.length < 1) {
 return res.status(400).json({ error: 'Handle cannot be empty' });
 }
+
 // Generate unique handle number
 const { rows: [{ nextval }] } = await query('SELECT nextval(\'user_number_seq\')');
 const handle_number = `${cleanHandle}${nextval}`;
+
 // Hash password with same settings as witness1
 const password_hash = await bcrypt.hash(password, 12);
 console.log(`Registering user: ${handle_number} with hash: ${password_hash.substring(0, 20)}...`);
+
 // Create user
 const { rows: [user] } = await query(`
 INSERT INTO users (handle, number, handle_number, password_hash, email, creed, member, active)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING id, handle_number, field_cred, is_admin, creed
 `, [cleanHandle, nextval, handle_number, password_hash, email || null, creed || null, 'member', 'active']);
+
 console.log(`User registered successfully: ${handle_number}`);
+
 // Sign JWT
 const token = signToken({
 id: user.id,
 handle_number: user.handle_number,
 is_admin: user.is_admin
 });
+
 res.cookie('token', token, {
 httpOnly: true,
 secure: process.env.NODE_ENV === 'production',
 maxAge: 7 * 24 * 60 * 60 * 1000,
 sameSite: 'lax'
 });
+
 res.json({
 user: {
 handle_number: user.handle_number,
@@ -501,51 +531,66 @@ res.status(500).json({ error: 'Registration failed' });
 }
 });
 
-// Login - Simplified and fixed
+// Login - Fixed with better error handling and consistent password comparison
 app.post('/api/login', async (req, res) => {
 try {
 const { handle_number, password } = req.body;
+
 if (!handle_number || !password) {
 return res.status(400).json({ error: 'Handle and password required' });
 }
+
 const cleanHandleNumber = handle_number.toLowerCase().trim();
 console.log(`Login attempt for: ${cleanHandleNumber}`);
+
 // Get user by handle_number
 const { rows: users } = await query(
 'SELECT id, handle_number, password_hash, field_cred, is_admin, active, creed FROM users WHERE LOWER(handle_number) = $1',
 [cleanHandleNumber]
 );
+
 if (users.length === 0) {
 console.log(`No user found for ${cleanHandleNumber}`);
 return res.status(401).json({ error: 'Invalid credentials' });
 }
+
 const user = users[0];
+
 // Check if account is deleted
 if (user.active === 'deleted') {
 console.log(`Deleted account login attempt: ${user.handle_number}`);
 return res.status(401).json({ error: 'Account has been deleted' });
 }
+
 console.log(`Found user: ${user.handle_number}, checking password...`);
-console.log(`Stored hash: ${user.password_hash.substring(0, 29)}...`);
-// Check password
+console.log(`Stored hash: ${user.password_hash.substring(0, 20)}...`);
+console.log(`Password input length: ${password.length}`);
+
+// Check password - ensure we're comparing exactly what was provided
 const valid = await bcrypt.compare(password, user.password_hash);
+console.log(`Password comparison result: ${valid}`);
+
 if (!valid) {
 console.log(`Invalid password for ${user.handle_number}`);
 return res.status(401).json({ error: 'Invalid credentials' });
 }
+
 console.log(`Successful login for ${user.handle_number} (admin: ${user.is_admin})`);
+
 // Sign JWT
 const token = signToken({
 id: user.id,
 handle_number: user.handle_number,
 is_admin: user.is_admin
 });
+
 res.cookie('token', token, {
 httpOnly: true,
 secure: process.env.NODE_ENV === 'production',
 maxAge: 7 * 24 * 60 * 60 * 1000,
 sameSite: 'lax'
 });
+
 res.json({
 user: {
 handle_number: user.handle_number,
@@ -567,9 +612,11 @@ const { rows: [user] } = await query(
 'SELECT handle_number, field_cred, is_admin, creed FROM users WHERE id = $1 AND active != \'deleted\'',
 [req.user.id]
 );
+
 if (!user) {
 return res.status(404).json({ error: 'User not found' });
 }
+
 res.json({ user });
 } catch (error) {
 console.error('Get user error:', error);
@@ -587,16 +634,21 @@ res.json({ success: true });
 app.patch('/api/account/password', authRequired, async (req, res) => {
 try {
 const { current_password, new_password } = req.body;
+
 // Get current password hash
 const { rows: [user] } = await query('SELECT password_hash FROM users WHERE id = $1', [req.user.id]);
+
 if (!await bcrypt.compare(current_password, user.password_hash)) {
 return res.status(400).json({ error: 'Current password is incorrect' });
 }
+
 if (new_password.length < 8) {
 return res.status(400).json({ error: 'New password must be at least 8 characters' });
 }
+
 const password_hash = await bcrypt.hash(new_password, 12);
 await query('UPDATE users SET password_hash = $1 WHERE id = $2', [password_hash, req.user.id]);
+
 res.json({ message: 'Password updated successfully' });
 } catch (error) {
 console.error('Password change error:', error);
@@ -619,21 +671,26 @@ res.status(500).json({ error: 'Affiliation change failed' });
 app.delete('/api/account', authRequired, async (req, res) => {
 try {
 const { password, reason } = req.body;
+
 if (!password) {
 return res.status(400).json({ error: 'Password required for account deletion' });
 }
+
 // Verify password
 const { rows: [user] } = await query('SELECT password_hash FROM users WHERE id = $1', [req.user.id]);
 const validPassword = await bcrypt.compare(password, user.password_hash);
+
 if (!validPassword) {
 return res.status(401).json({ error: 'Invalid password' });
 }
+
 // Soft delete
 await query(`
 UPDATE users
 SET deleted_at = now(), deletion_reason = $1, active = 'deleted'
 WHERE id = $2
 `, [reason || 'User requested deletion', req.user.id]);
+
 res.clearCookie('token');
 res.json({ success: true, message: 'Account deleted successfully' });
 } catch (error) {
@@ -659,6 +716,7 @@ res.status(500).json({ error: 'Failed to get boards' });
 app.get('/api/boards/:key/threads', async (req, res) => {
 try {
 const { key } = req.params;
+
 const { rows: threads } = await query(`
 SELECT t.id, t.title, t.signal_type, t.tags, t.sticky, t.locked,
 t.upvotes, t.downvotes, t.created_at, t.updated_at,
@@ -670,6 +728,7 @@ JOIN users u ON t.author_id = u.id
 WHERE b.key = $1 AND u.active != 'deleted'
 ORDER BY t.sticky DESC, t.updated_at DESC
 `, [key]);
+
 res.json({ threads });
 } catch (error) {
 console.error('Get threads error:', error);
@@ -682,14 +741,17 @@ app.post('/api/boards/:key/threads', authRequired, async (req, res) => {
 try {
 const { key } = req.params;
 const { title, body_md, signal, tags, image_path } = req.body;
+
 if (!title || !body_md) {
 return res.status(400).json({ error: 'Title and body required' });
 }
+
 // Get board
 const { rows: [board] } = await query('SELECT id FROM boards WHERE key = $1', [key]);
 if (!board) {
 return res.status(404).json({ error: 'Board not found' });
 }
+
 // Process tags
 let processedTags = null;
 if (tags) {
@@ -699,18 +761,22 @@ processedTags = tags.join(', ');
 processedTags = tags;
 }
 }
+
 // Create thread
 const { rows: [thread] } = await query(`
 INSERT INTO threads (board_id, author_id, title, body_md, signal_type, tags, image_path)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING id, title, signal_type, tags, image_path, created_at
 `, [board.id, req.user.id, title, body_md, signal || null, processedTags, image_path || null]);
+
 // Award field cred
 let credChange = 2;
 if (signal === 'after-action') credChange = 4;
 if (signal === 'intel' || signal === 'sighting') credChange = 3;
 if (image_path) credChange += 1;
+
 await query('UPDATE users SET field_cred = field_cred + $1 WHERE id = $2', [credChange, req.user.id]);
+
 console.log(`Thread created: "${title}" by ${req.user.handle_number} (+${credChange} cred)`);
 res.json({ thread });
 } catch (error) {
@@ -723,6 +789,7 @@ res.status(500).json({ error: 'Failed to create thread' });
 app.get('/api/threads/:id', async (req, res) => {
 try {
 const { id } = req.params;
+
 // Get thread
 const { rows: [thread] } = await query(`
 SELECT t.id, t.title, t.body_md, t.signal_type, t.tags, t.sticky, t.locked, t.pinned,
@@ -733,9 +800,11 @@ JOIN users u ON t.author_id = u.id
 JOIN boards b ON t.board_id = b.id
 WHERE t.id = $1 AND u.active != 'deleted'
 `, [id]);
+
 if (!thread) {
 return res.status(404).json({ error: 'Thread not found' });
 }
+
 // Get posts
 const { rows: posts } = await query(`
 SELECT p.id, p.body_md, p.image_path, p.upvotes, p.downvotes, p.created_at,
@@ -745,6 +814,7 @@ JOIN users u ON p.author_id = u.id
 WHERE p.thread_id = $1 AND u.active != 'deleted'
 ORDER BY p.created_at ASC
 `, [id]);
+
 res.json({ thread, posts });
 } catch (error) {
 console.error('Get thread error:', error);
@@ -757,32 +827,41 @@ app.post('/api/threads/:id/posts', authRequired, async (req, res) => {
 try {
 const { id } = req.params;
 const { body_md, image_path } = req.body;
+
 if (!body_md) {
 return res.status(400).json({ error: 'Post body required' });
 }
+
 // Check if thread exists and isn't locked
 const { rows: [thread] } = await query(
 'SELECT id, locked FROM threads WHERE id = $1',
 [id]
 );
+
 if (!thread) {
 return res.status(404).json({ error: 'Thread not found' });
 }
+
 if (thread.locked && !req.user.is_admin) {
 return res.status(403).json({ error: 'Thread is locked' });
 }
+
 // Create post
 const { rows: [post] } = await query(`
 INSERT INTO posts (thread_id, author_id, body_md, image_path)
 VALUES ($1, $2, $3, $4)
 RETURNING id, body_md, image_path, created_at
 `, [id, req.user.id, body_md, image_path || null]);
+
 // Update thread timestamp
 await query('UPDATE threads SET updated_at = now() WHERE id = $1', [id]);
+
 // Award field cred
 let credChange = 1;
 if (image_path) credChange += 1;
+
 await query('UPDATE users SET field_cred = field_cred + $1 WHERE id = $2', [credChange, req.user.id]);
+
 res.json({
 post: {
 ...post,
@@ -802,9 +881,11 @@ app.patch('/api/threads/:id', authRequired, adminRequired, async (req, res) => {
 try {
 const { id } = req.params;
 const { sticky, locked, pinned } = req.body;
+
 const updates = [];
 const values = [];
 let paramCount = 1;
+
 if (typeof sticky === 'boolean') {
 updates.push(`sticky = $${paramCount++}`);
 values.push(sticky);
@@ -817,18 +898,22 @@ if (typeof pinned === 'boolean') {
 updates.push(`pinned = $${paramCount++}`);
 values.push(pinned);
 }
+
 if (updates.length === 0) {
 return res.status(400).json({ error: 'No valid updates provided' });
 }
+
 values.push(id);
 const { rows: [thread] } = await query(`
 UPDATE threads SET ${updates.join(', ')}, updated_at = now()
 WHERE id = $${paramCount}
 RETURNING id, sticky, locked, pinned
 `, values);
+
 if (!thread) {
 return res.status(404).json({ error: 'Thread not found' });
 }
+
 res.json({ thread });
 } catch (error) {
 console.error('Moderate thread error:', error);
@@ -840,6 +925,7 @@ res.status(500).json({ error: 'Failed to moderate thread' });
 app.delete('/api/threads/:threadId', authRequired, async (req, res) => {
 try {
 const threadId = parseInt(req.params.threadId);
+
 // Get thread to check ownership
 const { rows: [thread] } = await query(`
 SELECT t.*, u.handle_number as author
@@ -847,15 +933,19 @@ FROM threads t
 JOIN users u ON t.author_id = u.id
 WHERE t.id = $1
 `, [threadId]);
+
 if (!thread) {
 return res.status(404).json({ error: 'Thread not found' });
 }
+
 // Check if user can delete (author or admin)
 if (thread.author !== req.user.handle_number && !req.user.is_admin) {
 return res.status(403).json({ error: 'Permission denied' });
 }
+
 // Delete thread (posts will cascade)
 await query('DELETE FROM threads WHERE id = $1', [threadId]);
+
 res.json({ message: 'Thread deleted successfully' });
 } catch (error) {
 console.error('Delete thread error:', error);
@@ -867,6 +957,7 @@ res.status(500).json({ error: 'Thread deletion failed' });
 app.delete('/api/posts/:postId', authRequired, async (req, res) => {
 try {
 const postId = parseInt(req.params.postId);
+
 // Get post to check ownership
 const { rows: [post] } = await query(`
 SELECT p.*, u.handle_number as author
@@ -874,15 +965,19 @@ FROM posts p
 JOIN users u ON p.author_id = u.id
 WHERE p.id = $1
 `, [postId]);
+
 if (!post) {
 return res.status(404).json({ error: 'Post not found' });
 }
+
 // Check if user can delete (author or admin)
 if (post.author !== req.user.handle_number && !req.user.is_admin) {
 return res.status(403).json({ error: 'Permission denied' });
 }
+
 // Delete post
 await query('DELETE FROM posts WHERE id = $1', [postId]);
+
 res.json({ message: 'Post deleted successfully' });
 } catch (error) {
 console.error('Delete post error:', error);
@@ -906,6 +1001,7 @@ app.get('/api/chat/rooms/:key/messages', authRequired, async (req, res) => {
 try {
 const { key } = req.params;
 const limit = parseInt(req.query.limit) || 50;
+
 const { rows: messages } = await query(`
 SELECT m.id, m.body, m.image_path, m.upvotes, m.downvotes, m.created_at,
 u.handle_number as author
@@ -916,6 +1012,7 @@ WHERE r.key = $1 AND u.active != 'deleted'
 ORDER BY m.created_at DESC
 LIMIT $2
 `, [key, limit]);
+
 res.json({ messages: messages.reverse() });
 } catch (error) {
 console.error('Get messages error:', error);
@@ -927,6 +1024,7 @@ res.status(500).json({ error: 'Failed to get messages' });
 app.delete('/api/chat-messages/:messageId', authRequired, async (req, res) => {
 try {
 const messageId = parseInt(req.params.messageId);
+
 // Get message to check ownership
 const { rows: [message] } = await query(`
 SELECT m.*, u.handle_number as author
@@ -934,15 +1032,19 @@ FROM messages m
 JOIN users u ON m.author_id = u.id
 WHERE m.id = $1
 `, [messageId]);
+
 if (!message) {
 return res.status(404).json({ error: 'Message not found' });
 }
+
 // Check if user can delete (author or admin)
 if (message.author !== req.user.handle_number && !req.user.is_admin) {
 return res.status(403).json({ error: 'Permission denied' });
 }
+
 // Delete message
 await query('DELETE FROM messages WHERE id = $1', [messageId]);
+
 res.json({ message: 'Message deleted successfully' });
 } catch (error) {
 console.error('Delete chat message error:', error);
@@ -962,6 +1064,7 @@ FROM users u
 WHERE u.active = 'active'
 ORDER BY u.is_admin DESC, u.created_at ASC
 `);
+
 res.json({ members });
 } catch (error) {
 console.error('Get members error:', error);
@@ -973,6 +1076,7 @@ res.status(500).json({ error: 'Failed to get members' });
 app.get('/api/members/:handleNumber', authRequired, async (req, res) => {
 try {
 const { handleNumber } = req.params;
+
 const { rows: [member] } = await query(`
 SELECT
 u.id, u.handle_number, u.field_cred, u.is_admin, u.creed, u.created_at,
@@ -981,9 +1085,11 @@ u.id, u.handle_number, u.field_cred, u.is_admin, u.creed, u.created_at,
 FROM users u
 WHERE u.handle_number = $1 AND u.active = 'active'
 `, [handleNumber]);
+
 if (!member) {
 return res.status(404).json({ error: 'Member not found' });
 }
+
 res.json({ member });
 } catch (error) {
 console.error('Get member error:', error);
@@ -1009,6 +1115,7 @@ WHERE (u1.handle_number = $1 OR u2.handle_number = $1)
 AND u1.active != 'deleted' AND u2.active != 'deleted'
 ORDER BY pc.id DESC
 `, [req.user.handle_number]);
+
 res.json({ chats });
 } catch (error) {
 console.error('Get private chats error:', error);
@@ -1019,22 +1126,27 @@ res.status(500).json({ error: 'Failed to get private chats' });
 app.post('/api/private-chats', authRequired, async (req, res) => {
 try {
 const { recipient, message } = req.body;
+
 if (!recipient || !message) {
 return res.status(400).json({ error: 'Recipient and message required' });
 }
+
 // Get recipient user
 const { rows: [recipientUser] } = await query(
 'SELECT id FROM users WHERE handle_number = $1 AND active = \'active\'',
 [recipient]
 );
+
 if (!recipientUser) {
 return res.status(404).json({ error: 'Recipient not found' });
 }
+
 // Check if chat already exists
 let { rows: [chat] } = await query(`
 SELECT id FROM private_chats
 WHERE (user1_id = $1 AND user2_id = $2) OR (user1_id = $2 AND user2_id = $1)
 `, [req.user.id, recipientUser.id]);
+
 if (!chat) {
 // Create new chat
 const { rows: [newChat] } = await query(`
@@ -1044,11 +1156,13 @@ RETURNING id
 `, [req.user.id, recipientUser.id]);
 chat = newChat;
 }
+
 // Add initial message
 await query(`
 INSERT INTO private_messages (chat_id, sender_id, body)
 VALUES ($1, $2, $3)
 `, [chat.id, req.user.id, message]);
+
 res.json({ chat });
 } catch (error) {
 console.error('Create private chat error:', error);
@@ -1059,6 +1173,7 @@ res.status(500).json({ error: 'Failed to create private chat' });
 app.get('/api/private-chats/:chatId/messages', authRequired, async (req, res) => {
 try {
 const chatId = parseInt(req.params.chatId);
+
 // Verify user has access to this chat
 const { rows: [chat] } = await query(`
 SELECT pc.id FROM private_chats pc
@@ -1066,9 +1181,11 @@ JOIN users u1 ON pc.user1_id = u1.id
 JOIN users u2 ON pc.user2_id = u2.id
 WHERE pc.id = $1 AND (u1.handle_number = $2 OR u2.handle_number = $2)
 `, [chatId, req.user.handle_number]);
+
 if (!chat) {
 return res.status(404).json({ error: 'Chat not found or access denied' });
 }
+
 const { rows: messages } = await query(`
 SELECT pm.id, pm.body, pm.image_path, pm.created_at,
 u.handle_number as sender
@@ -1077,6 +1194,7 @@ JOIN users u ON pm.sender_id = u.id
 WHERE pm.chat_id = $1 AND u.active != 'deleted'
 ORDER BY pm.created_at ASC
 `, [chatId]);
+
 res.json({ messages });
 } catch (error) {
 console.error('Get private messages error:', error);
@@ -1088,9 +1206,11 @@ app.post('/api/private-chats/:chatId/messages', authRequired, async (req, res) =
 try {
 const chatId = parseInt(req.params.chatId);
 const { body } = req.body;
+
 if (!body) {
 return res.status(400).json({ error: 'Message body required' });
 }
+
 // Verify user has access to this chat
 const { rows: [chat] } = await query(`
 SELECT pc.id FROM private_chats pc
@@ -1098,14 +1218,17 @@ JOIN users u1 ON pc.user1_id = u1.id
 JOIN users u2 ON pc.user2_id = u2.id
 WHERE pc.id = $1 AND (u1.handle_number = $2 OR u2.handle_number = $2)
 `, [chatId, req.user.handle_number]);
+
 if (!chat) {
 return res.status(404).json({ error: 'Chat not found or access denied' });
 }
+
 const { rows: [message] } = await query(`
 INSERT INTO private_messages (chat_id, sender_id, body)
 VALUES ($1, $2, $3)
 RETURNING id, body, created_at
 `, [chatId, req.user.id, body]);
+
 res.json({
 message: {
 ...message,
@@ -1121,6 +1244,7 @@ res.status(500).json({ error: 'Failed to send message' });
 app.delete('/api/private-messages/:messageId', authRequired, async (req, res) => {
 try {
 const messageId = parseInt(req.params.messageId);
+
 // Get message to check ownership
 const { rows: [message] } = await query(`
 SELECT pm.*, u.handle_number as sender
@@ -1128,15 +1252,19 @@ FROM private_messages pm
 JOIN users u ON pm.sender_id = u.id
 WHERE pm.id = $1
 `, [messageId]);
+
 if (!message) {
 return res.status(404).json({ error: 'Message not found' });
 }
+
 // Check if user can delete (only sender can delete their own messages)
 if (message.sender !== req.user.handle_number) {
 return res.status(403).json({ error: 'Permission denied' });
 }
+
 // Delete message
 await query('DELETE FROM private_messages WHERE id = $1', [messageId]);
+
 res.json({ message: 'Message deleted successfully' });
 } catch (error) {
 console.error('Delete private message error:', error);
@@ -1168,6 +1296,7 @@ active, created_at, deleted_at, deletion_reason,
 FROM users
 ORDER BY created_at DESC
 `);
+
 res.json({ users });
 } catch (error) {
 console.error('Admin get users error:', error);
@@ -1179,16 +1308,20 @@ app.patch('/api/admin/users/:userId/field-cred', authRequired, adminRequired, as
 try {
 const userId = parseInt(req.params.userId);
 const { field_cred, reason } = req.body;
+
 const { rows: [user] } = await query(`
 UPDATE users
 SET field_cred = $1
 WHERE id = $2
 RETURNING handle_number, field_cred
 `, [field_cred, userId]);
+
 if (!user) {
 return res.status(404).json({ error: 'User not found' });
 }
+
 console.log(`Admin Field Cred Update: ${user.handle_number} set to ${field_cred} (${reason || 'Admin adjustment'})`);
+
 res.json({
 success: true,
 user: {
@@ -1206,19 +1339,24 @@ app.delete('/api/admin/users/:userId', authRequired, adminRequired, async (req, 
 try {
 const userId = parseInt(req.params.userId);
 const { reason } = req.body;
+
 if (userId === req.user.id) {
 return res.status(400).json({ error: 'Cannot delete your own admin account' });
 }
+
 const { rows: [user] } = await query(`
 UPDATE users
 SET deleted_at = now(), deletion_reason = $1, active = 'deleted'
 WHERE id = $2
 RETURNING handle_number
 `, [reason || 'Admin deletion', userId]);
+
 if (!user) {
 return res.status(404).json({ error: 'User not found' });
 }
+
 console.log(`Admin deletion: ${user.handle_number} deleted by ${req.user.handle_number} (${reason})`);
+
 res.json({
 success: true,
 message: `User ${user.handle_number} deleted by admin`
@@ -1233,12 +1371,16 @@ app.post('/api/admin/users/:userId/strike', authRequired, adminRequired, async (
 try {
 const userId = parseInt(req.params.userId);
 const { reason } = req.body;
+
 const { rows: [user] } = await query('SELECT handle_number FROM users WHERE id = $1', [userId]);
+
 if (!user) {
 return res.status(404).json({ error: 'User not found' });
 }
+
 // In a real implementation, you'd track strikes in a separate table
 console.log(`Admin ${req.user.handle_number} issued strike to ${user.handle_number}. Reason: ${reason}`);
+
 res.json({ message: 'Strike issued successfully' });
 } catch (error) {
 console.error('Strike issuance error:', error);
@@ -1264,6 +1406,7 @@ JOIN users u2 ON pc.user2_id = u2.id
 WHERE u1.active != 'deleted' AND u2.active != 'deleted'
 ORDER BY last_message_at DESC
 `);
+
 res.json({ chats });
 } catch (error) {
 console.error('Admin get private chats error:', error);
@@ -1274,6 +1417,7 @@ res.status(500).json({ error: 'Failed to get private chats' });
 app.get('/api/admin/private-chats/:chatId/messages', authRequired, adminRequired, async (req, res) => {
 try {
 const chatId = parseInt(req.params.chatId);
+
 const { rows: messages } = await query(`
 SELECT pm.id, pm.body, pm.image_path, pm.created_at,
 u.handle_number as sender
@@ -1282,6 +1426,7 @@ JOIN users u ON pm.sender_id = u.id
 WHERE pm.chat_id = $1 AND u.active != 'deleted'
 ORDER BY pm.created_at ASC
 `, [chatId]);
+
 res.json({ messages });
 } catch (error) {
 console.error('Admin get private chat messages error:', error);
@@ -1292,16 +1437,20 @@ res.status(500).json({ error: 'Failed to get messages' });
 app.post('/api/admin/private-chats/:chatId/join', authRequired, adminRequired, async (req, res) => {
 try {
 const chatId = parseInt(req.params.chatId);
+
 // Verify chat exists
 const { rows: [chat] } = await query('SELECT id FROM private_chats WHERE id = $1', [chatId]);
+
 if (!chat) {
 return res.status(404).json({ error: 'Chat not found' });
 }
+
 // Add notification message
 await query(`
 INSERT INTO private_messages (chat_id, sender_id, body)
 VALUES ($1, $2, $3)
 `, [chatId, req.user.id, `Admin ${req.user.handle_number} has joined this conversation for monitoring purposes.`]);
+
 res.json({ message: 'Joined chat successfully' });
 } catch (error) {
 console.error('Admin chat join error:', error);
@@ -1327,11 +1476,14 @@ return out;
 io.use((socket, next) => {
 try {
 let token = socket.handshake.auth && socket.handshake.auth.token;
+
 if (!token) {
 const cookies = parseCookie(socket.handshake.headers.cookie || '');
 token = cookies.token;
 }
+
 if (!token) return next(new Error('auth_required'));
+
 const decoded = jwt.verify(token, JWT_SECRET);
 socket.user = decoded;
 console.log(`Socket auth success: ${decoded.handle_number}`);
@@ -1345,6 +1497,7 @@ next(new Error('invalid_token'));
 io.on('connection', (socket) => {
 console.log(`Socket connected: ${socket.user.handle_number}`);
 socket.join('global');
+
 socket.on('join', (roomKey) => {
 console.log(`${socket.user.handle_number} joined room: ${roomKey}`);
 Object.keys(socket.rooms).forEach(r => {
@@ -1352,23 +1505,29 @@ if (r !== socket.id) socket.leave(r);
 });
 socket.join(roomKey);
 });
+
 socket.on('message', async ({ roomKey, body, image_path }) => {
 try {
 if (!body || body.trim() === '') {
 return socket.emit('error', { message: 'Message body required' });
 }
+
 const { rows: roomRows } = await query(`SELECT id FROM chat_rooms WHERE key=$1`, [roomKey]);
 const room = roomRows[0];
+
 if (!room) {
 return socket.emit('error', { message: 'Room not found' });
 }
+
 const { rows: [message] } = await query(`
 INSERT INTO messages(room_id, author_id, body, image_path)
 VALUES($1,$2,$3,$4)
 RETURNING id, created_at
 `, [room.id, socket.user.id, body.trim(), image_path || null]);
+
 // Award small field cred for chat participation
 await query('UPDATE users SET field_cred = field_cred + 1 WHERE id = $1', [socket.user.id]);
+
 const messageData = {
 id: message.id,
 author: socket.user.handle_number,
@@ -1378,7 +1537,9 @@ created_at: message.created_at,
 upvotes: 0,
 downvotes: 0
 };
+
 console.log(`Chat message: [${roomKey}] ${socket.user.handle_number}: ${body.substring(0, 50)}...`);
+
 // Broadcast to all users in the room
 io.to(roomKey).emit('message', messageData);
 } catch (error) {
@@ -1386,6 +1547,7 @@ console.error('Socket message error:', error);
 socket.emit('error', { message: 'Failed to send message' });
 }
 });
+
 socket.on('disconnect', () => {
 console.log(`Socket disconnected: ${socket.user.handle_number}`);
 });
@@ -1393,9 +1555,11 @@ console.log(`Socket disconnected: ${socket.user.handle_number}`);
 
 // --- Health check + SPA fallback ---
 app.get('/healthz', (req, res) => res.json({ ok: true, timestamp: new Date().toISOString() }));
+
 app.get('/', (req, res) => {
 res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+
 app.get(/^\/(?!api|healthz|socket\.io|uploads).*/, (req, res) => {
 res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -1417,8 +1581,10 @@ async function ensureDirectories() {
 try {
 const publicDir = path.join(__dirname, 'public');
 const uploadsDir = path.join(__dirname, 'public', 'uploads');
+
 await fs.mkdir(publicDir, { recursive: true });
 await fs.mkdir(uploadsDir, { recursive: true });
+
 console.log('Required directories created successfully');
 console.log(`Public directory: ${publicDir}`);
 console.log(`Uploads directory: ${uploadsDir}`);
@@ -1464,7 +1630,6 @@ process.exit(0);
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
 console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-// Application specific logging, throwing an error, or other logic here
 });
 
 // Handle uncaught exceptions
