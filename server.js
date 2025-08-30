@@ -578,8 +578,7 @@ const cleanHandleNumber = handle_number.toLowerCase().trim();
 console.log(`Login attempt for: ${cleanHandleNumber}`);
 // Get user by handle_number
 const { rows: users } = await query(
-'SELECT id, handle_number, password_hash, field_cred, is_admin, active, creed FROM users
-WHERE LOWER(handle_number) = $1',
+'SELECT id, handle_number, password_hash, field_cred, is_admin, active, creed FROM users WHERE LOWER(handle_number) = $1',
 [cleanHandleNumber]
 );
 if (users.length === 0) {
@@ -634,8 +633,7 @@ res.status(500).json({ error: 'Login failed' });
 app.get('/api/me', authRequired, async (req, res) => {
 try {
 const { rows: [user] } = await query(
-'SELECT handle_number, field_cred, is_admin, creed FROM users WHERE id = $1 AND active
-!= \'deleted\'',
+'SELECT handle_number, field_cred, is_admin, creed FROM users WHERE id = $1 AND active != \'deleted\'',
 [req.user.id]
 );
 if (!user) {
