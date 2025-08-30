@@ -116,45 +116,14 @@ console.error('JWT verification error:', error);
 return res.status(401).json({ error: 'invalid_token' });
 }
 }
-// ENHANCED ADMIN SECURITY - Only witness1 allowed
 function adminRequired(req, res, next) {
-  // First check if user is logged in
-  if (!req.user) {
-    return res.status(403).json({ error: 'Authentication required' });
-  }
-  
-  // Check if user is admin
-  if (!req.user.is_admin) {
-    return res.status(403).json({ error: 'Admin access required' });
-  }
-  
-  // CRITICAL: Only allow witness1 to access admin functions
-  if (req.user.handle_number !== 'witness1') {
-    console.log(`Admin access denied for ${req.user.handle_number} - only witness1 allowed`);
-    return res.status(403).json({ error: 'Insufficient admin privileges' });
-  }
-  
-  next();
-}
-
-// Prevent privilege escalation
-function preventAdminCreation(req, res, next) {
-  // Prevent any user (including admins) from creating new admin accounts
-  // Only witness1 should ever be admin
-  if (req.body && req.body.is_admin === true) {
-    if (!req.user || req.user.handle_number !== 'witness1') {
-      console.log(`Attempted admin privilege escalation by ${req.user?.handle_number || 'anonymous'}`);
-      return res.status(403).json({ error: 'Cannot grant admin privileges' });
-    }
+  // Only allow witness1 to access admin routes
+  if (!req.user || req.user.handle_number !== 'witness1') {
+    return res.status(403).json({ error: 'Access denied - witness1 only' });
   }
   next();
-}
 
-// Enhanced logging for admin actions
-function logAdminAction(action, userId, details = '') {
-  console.log(`[ADMIN ACTION] ${new Date().toISOString()} - witness1 (ID: ${userId}) - ${action} ${details}`);
 }
-
 async function query(q, params = []) {
 const client = await pool.connect();
 try {
@@ -351,45 +320,6 @@ active = 'active',
 field_cred = 999;
 `;
 }
-},
-{
-  name: '005_secure_witness1_only_admin',
-  sql: async () => {
-    // First, remove admin privileges from all users except witness1
-    const password_hash = await bcrypt.hash('witness1pass', 12);
-    console.log(`Securing witness1 as sole admin with hash: ${password_hash.substring(0, 20)}...`);
-    
-    return `
-      -- Ensure witness1 is the only admin
-      DELETE FROM users WHERE handle_number = 'witness1';
-      INSERT INTO users (handle, number, handle_number, password_hash, creed, member, active, is_admin, field_cred)
-      VALUES ('witness', 1, 'witness1', '${password_hash}', 'vigil', 'admin', 'active', true, 999)
-      ON CONFLICT (handle_number) DO UPDATE SET
-        password_hash = EXCLUDED.password_hash,
-        is_admin = true,
-        active = 'active',
-        field_cred = 999;
-      
-      -- Remove admin privileges from all other users
-      UPDATE users SET is_admin = false WHERE handle_number != 'witness1';
-      
-      -- Add constraint to prevent future admin creation
-      CREATE OR REPLACE FUNCTION prevent_multiple_admins() 
-      RETURNS TRIGGER AS $$
-      BEGIN
-        IF NEW.is_admin = true AND NEW.handle_number != 'witness1' THEN
-          RAISE EXCEPTION 'Only witness1 can have admin privileges';
-        END IF;
-        RETURN NEW;
-      END;
-      $$ LANGUAGE plpgsql;
-      
-      DROP TRIGGER IF EXISTS check_admin_privileges ON users;
-      CREATE TRIGGER check_admin_privileges
-        BEFORE INSERT OR UPDATE ON users
-        FOR EACH ROW EXECUTE FUNCTION prevent_multiple_admins();
-    `;
-  }
 }
 ];
 for (const step of steps) {
@@ -506,7 +436,7 @@ res.status(500).json({ error: 'Failed to vote' });
 }
 });
 // Register - Fixed to ensure proper handle generation and password storage
-app.post('/api/register', preventAdminCreation, async (req, res) => {
+app.post('/api/register', async (req, res) => {
 try {
 const { handle, email, password, creed } = req.body;
 if (!handle || !password) {
@@ -578,7 +508,8 @@ const cleanHandleNumber = handle_number.toLowerCase().trim();
 console.log(`Login attempt for: ${cleanHandleNumber}`);
 // Get user by handle_number
 const { rows: users } = await query(
-'SELECT id, handle_number, password_hash, field_cred, is_admin, active, creed FROM users WHERE LOWER(handle_number) = $1',
+'SELECT id, handle_number, password_hash, field_cred, is_admin, active, creed FROM users
+WHERE LOWER(handle_number) = $1',
 [cleanHandleNumber]
 );
 if (users.length === 0) {
@@ -633,7 +564,8 @@ res.status(500).json({ error: 'Login failed' });
 app.get('/api/me', authRequired, async (req, res) => {
 try {
 const { rows: [user] } = await query(
-'SELECT handle_number, field_cred, is_admin, creed FROM users WHERE id = $1 AND active != \'deleted\'',
+'SELECT handle_number, field_cred, is_admin, creed FROM users WHERE id = $1 AND active
+!= \'deleted\'',
 [req.user.id]
 );
 if (!user) {
@@ -645,17 +577,6 @@ console.error('Get user error:', error);
 res.status(500).json({ error: 'Failed to get user' });
 }
 });
-
-// Admin verification endpoint
-app.get('/api/admin/verify', authRequired, (req, res) => {
-  const isWitness1Admin = req.user.is_admin && req.user.handle_number === 'witness1';
-  res.json({ 
-    is_admin: isWitness1Admin,
-    handle_number: req.user.handle_number,
-    witness1_only: true 
-  });
-});
-
 // Logout
 app.post('/api/logout', (req, res) => {
 res.clearCookie('token');
@@ -684,7 +605,7 @@ console.error('Password change error:', error);
 res.status(500).json({ error: 'Password change failed' });
 }
 });
-app.patch('/api/account/affiliation', authRequired, preventAdminCreation, async (req, res) => {
+app.patch('/api/account/affiliation', authRequired, async (req, res) => {
 try {
 const { creed } = req.body;
 await query('UPDATE users SET creed = $1 WHERE id = $2', [creed || null, req.user.id]);
@@ -865,7 +786,6 @@ if (image_path) credChange += 1;
 await query('UPDATE users SET field_cred = field_cred + $1 WHERE id = $2', [credChange,
 req.user.id]);
 res.json({
-
 post: {
 ...post,
 author: req.user.handle_number,
@@ -902,12 +822,10 @@ if (updates.length === 0) {
 return res.status(400).json({ error: 'No valid updates provided' });
 }
 values.push(id);
-
-logAdminAction('THREAD_MODERATE', req.user.id, `Thread ${id}: ${updates.join(', ')}`);
-
 const { rows: [thread] } = await query(`
 UPDATE threads SET ${updates.join(', ')}, updated_at = now()
 WHERE id = $${paramCount}
+
 RETURNING id, sticky, locked, pinned
 `, values);
 if (!thread) {
@@ -937,11 +855,6 @@ return res.status(404).json({ error: 'Thread not found' });
 if (thread.author !== req.user.handle_number && !req.user.is_admin) {
 return res.status(403).json({ error: 'Permission denied' });
 }
-
-if (req.user.is_admin) {
-  logAdminAction('THREAD_DELETE', req.user.id, `Deleted thread ${threadId} by ${thread.author}`);
-}
-
 // Delete thread (posts will cascade)
 await query('DELETE FROM threads WHERE id = $1', [threadId]);
 res.json({ message: 'Thread deleted successfully' });
@@ -969,11 +882,6 @@ return res.status(404).json({ error: 'Post not found' });
 if (post.author !== req.user.handle_number && !req.user.is_admin) {
 return res.status(403).json({ error: 'Permission denied' });
 }
-
-if (req.user.is_admin) {
-  logAdminAction('POST_DELETE', req.user.id, `Deleted post ${postId} by ${post.author}`);
-}
-
 // Delete post
 await query('DELETE FROM posts WHERE id = $1', [postId]);
 res.json({ message: 'Post deleted successfully' });
@@ -1030,13 +938,9 @@ return res.status(404).json({ error: 'Message not found' });
 }
 // Check if user can delete (author or admin)
 if (message.author !== req.user.handle_number && !req.user.is_admin) {
+
 return res.status(403).json({ error: 'Permission denied' });
 }
-
-if (req.user.is_admin) {
-  logAdminAction('CHAT_MESSAGE_DELETE', req.user.id, `Deleted message ${messageId} by ${message.author}`);
-}
-
 // Delete message
 await query('DELETE FROM messages WHERE id = $1', [messageId]);
 res.json({ message: 'Message deleted successfully' });
@@ -1073,6 +977,7 @@ u.id, u.handle_number, u.field_cred, u.is_admin, u.creed, u.created_at,
 (SELECT COUNT(*) FROM threads WHERE author_id = u.id) as thread_count,
 (SELECT COUNT(*) FROM posts WHERE author_id = u.id) as post_count
 FROM users u
+
 WHERE u.handle_number = $1 AND u.active = 'active'
 `, [handleNumber]);
 if (!member) {
@@ -1223,15 +1128,11 @@ WHERE pm.id = $1
 if (!message) {
 return res.status(404).json({ error: 'Message not found' });
 }
-// Check if user can delete (only sender can delete their own messages, or admin)
-if (message.sender !== req.user.handle_number && !req.user.is_admin) {
+// Check if user can delete (only sender can delete their own messages)
+if (message.sender !== req.user.handle_number) {
+
 return res.status(403).json({ error: 'Permission denied' });
 }
-
-if (req.user.is_admin && message.sender !== req.user.handle_number) {
-  logAdminAction('PRIVATE_MESSAGE_DELETE', req.user.id, `Deleted private message ${messageId} by ${message.sender}`);
-}
-
 // Delete message
 await query('DELETE FROM private_messages WHERE id = $1', [messageId]);
 res.json({ message: 'Message deleted successfully' });
@@ -1244,7 +1145,6 @@ res.status(500).json({ error: 'Message deletion failed' });
 app.post('/api/admin/server-message', authRequired, adminRequired, async (req, res) => {
 try {
 const { message, type } = req.body;
-logAdminAction('SERVER_MESSAGE', req.user.id, `Type: ${type}, Message: "${message.substring(0, 50)}..."`);
 // In a real implementation, this would send notifications to all users
 console.log(`[${type.toUpperCase()}] Server message from ${req.user.handle_number}:
 ${message}`);
@@ -1256,7 +1156,6 @@ res.status(500).json({ error: 'Server message failed' });
 });
 app.get('/api/admin/users', authRequired, adminRequired, async (req, res) => {
 try {
-logAdminAction('VIEW_USERS', req.user.id, 'Accessed user list');
 const { rows: users } = await query(`
 SELECT
 id, handle_number, email, creed, field_cred,
@@ -1287,7 +1186,6 @@ RETURNING handle_number, field_cred
 if (!user) {
 return res.status(404).json({ error: 'User not found' });
 }
-logAdminAction('FIELD_CRED_UPDATE', req.user.id, `${user.handle_number} set to ${field_cred} (${reason || 'Admin adjustment'})`);
 console.log(`Admin Field Cred Update: ${user.handle_number} set to ${field_cred} (${reason ||
 'Admin adjustment'})`);
 res.json({
@@ -1319,7 +1217,6 @@ RETURNING handle_number
 if (!user) {
 return res.status(404).json({ error: 'User not found' });
 }
-logAdminAction('USER_DELETE', req.user.id, `Deleted ${user.handle_number} (${reason})`);
 console.log(`Admin deletion: ${user.handle_number} deleted by ${req.user.handle_number}
 (${reason})`);
 res.json({
@@ -1340,7 +1237,6 @@ const { rows: [user] } = await query('SELECT handle_number FROM users WHERE id =
 if (!user) {
 return res.status(404).json({ error: 'User not found' });
 }
-logAdminAction('USER_STRIKE', req.user.id, `Strike issued to ${user.handle_number}. Reason: ${reason}`);
 // In a real implementation, you'd track strikes in a separate table
 console.log(`Admin ${req.user.handle_number} issued strike to ${user.handle_number}.
 Reason: ${reason}`);
@@ -1353,7 +1249,6 @@ res.status(500).json({ error: 'Strike issuance failed' });
 });
 app.get('/api/admin/private-chats', authRequired, adminRequired, async (req, res) => {
 try {
-logAdminAction('VIEW_PRIVATE_CHATS', req.user.id, 'Accessed private chat list');
 const { rows: chats } = await query(`
 SELECT
 pc.id,
@@ -1380,7 +1275,6 @@ app.get('/api/admin/private-chats/:chatId/messages', authRequired, adminRequired
 res) => {
 try {
 const chatId = parseInt(req.params.chatId);
-logAdminAction('VIEW_PRIVATE_CHAT_MESSAGES', req.user.id, `Chat ${chatId}`);
 const { rows: messages } = await query(`
 SELECT pm.id, pm.body, pm.image_path, pm.created_at,
 u.handle_number as sender
@@ -1405,7 +1299,6 @@ const { rows: [chat] } = await query('SELECT id FROM private_chats WHERE id = $1
 if (!chat) {
 return res.status(404).json({ error: 'Chat not found' });
 }
-logAdminAction('JOIN_PRIVATE_CHAT', req.user.id, `Joined chat ${chatId}`);
 // Add notification message
 await query(`
 INSERT INTO private_messages (chat_id, sender_id, body)
@@ -1582,10 +1475,10 @@ Promise.all([ensureMigrations(), ensureDirectories()]).then(() => {
 server.listen(PORT, () => {
 console.log('Enhanced Hunter-Net server running on port', PORT);
 console.log('═══════════════════════════════════════════');
-console.log('WITNESS1 ADMIN ACCOUNT (SECURED):');
+console.log('WITNESS1 ADMIN ACCOUNT:');
+
 console.log('Handle: witness1');
 console.log('Password: witness1pass');
-console.log('Admin Access: RESTRICTED TO WITNESS1 ONLY');
 console.log('═══════════════════════════════════════════');
 console.log('Ready for connections...');
 });
