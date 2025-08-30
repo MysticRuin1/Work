@@ -324,9 +324,12 @@ INSERT INTO boards (name, description, key) VALUES
 ON CONFLICT (key) DO NOTHING;
 `
 },
-{
+        {
 name: '003_reset_users_and_create_witness1',
-sql: `
+sql: async () => {
+// Generate fresh password hash
+const password_hash = await bcrypt.hash('witness1pass', 12);
+return `
 -- Remove ALL users first
 DELETE FROM users;
 
@@ -336,15 +339,20 @@ SELECT setval('user_number_seq', 1, false);
 -- Create fresh witness1 admin account with proper password hash
 -- Password: witness1pass (hashed with bcrypt rounds 12)
 INSERT INTO users (handle, number, handle_number, password_hash, creed, member, active, is_admin, field_cred)
-VALUES ('witness', 1, 'witness1', '$2b$12$8K9wjJpKhXjzqX7Z5YoRF.B8mKP6GJH4WXqN9vL3rS2tE5dC7aI1u', 'vigil', 'admin', 'active', true, 999);
-`
+VALUES ('witness', 1, 'witness1', '${password_hash}', 'vigil', 'admin', 'active', true, 999);
+`;
+}
 }
 ];
 
-for (const step of steps) {
+        for (const step of steps) {
 if (!ran.has(step.name)) {
 console.log(`Running migration: ${step.name}`);
-await query(step.sql);
+let sql = step.sql;
+if (typeof sql === 'function') {
+sql = await sql();
+}
+await query(sql);
 await query(`INSERT INTO schema_migrations(name) VALUES($1)`, [step.name]);
 console.log(`Completed migration: ${step.name}`);
 }
