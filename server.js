@@ -658,8 +658,7 @@ res.status(500).json({ error: 'Login failed' });
 app.get('/api/me', authRequired, async (req, res) => {
 try {
 const { rows: [user] } = await query(
-'SELECT handle_number, field_cred, is_admin, creed FROM users WHERE id = $1
-AND active != \'deleted\'',
+'SELECT handle_number, field_cred, is_admin, creed FROM users WHERE id = $1 AND active != \'deleted\'',
 [req.user.id]
 );
 
@@ -1050,8 +1049,7 @@ res.status(500).json({ error: 'Post deletion failed' });
 // Get chat rooms
 app.get('/api/chat/rooms', authRequired, async (req, res) => {
 try {
-const { rows: rooms } = await query('SELECT key, title FROM chat_rooms ORDER BY
-title');
+const { rows: rooms } = await query('SELECT key, title FROM chat_rooms ORDER BY title');
 res.json({ rooms });
 } catch (error) {
 console.error('Get rooms error:', error);
@@ -1344,8 +1342,7 @@ try {
 const { message, type } = req.body;
 
 // In a real implementation, this would send notifications to all users
-console.log(`[${type.toUpperCase()}] Server message from ${req.user.handle_number}:
-${message}`);
+        console.log(`[${type.toUpperCase()}] Server message from ${req.user.handle_number}: ${message}`);
 
 res.json({ message: 'Server message sent successfully' });
 } catch (error) {
@@ -1427,8 +1424,7 @@ if (!user) {
 return res.status(404).json({ error: 'User not found' });
 }
 
-console.log(`Admin deletion: ${user.handle_number} deleted by
-${req.user.handle_number} (${reason})`);
+        console.log(`Admin deletion: ${user.handle_number} deleted by ${req.user.handle_number} (${reason})`);
 
 res.json({
 success: true,
@@ -1445,16 +1441,14 @@ try {
 const userId = parseInt(req.params.userId);
 const { reason } = req.body;
 
-const { rows: [user] } = await query('SELECT handle_number FROM users WHERE id =
-$1', [userId]);
+        const { rows: [user] } = await query('SELECT handle_number FROM users WHERE id = $1', [userId]);
 
 if (!user) {
 return res.status(404).json({ error: 'User not found' });
 }
 
 // In a real implementation, you'd track strikes in a separate table
-console.log(`Admin ${req.user.handle_number} issued strike to ${user.handle_number}.
-Reason: ${reason}`);
+        console.log(`Admin ${req.user.handle_number} issued strike to ${user.handle_number}. Reason: ${reason}`);
 
 res.json({ message: 'Strike issued successfully' });
 } catch (error) {
@@ -1619,8 +1613,7 @@ upvotes: 0,
 downvotes: 0
 };
 
-console.log(`Chat message: [${roomKey}] ${socket.user.handle_number}:
-${body.substring(0, 50)}...`);
+        console.log(`Chat message: [${roomKey}] ${socket.user.handle_number}: ${body.substring(0, 50)}...`);
 
 // Broadcast to all users in the room
 io.to(roomKey).emit('message', messageData);
